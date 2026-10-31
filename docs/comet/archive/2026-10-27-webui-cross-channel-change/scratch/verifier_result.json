@@ -1,0 +1,55 @@
+{
+  "kind": "verifier-response",
+  "response": {
+    "kind": "final-result",
+    "result": {
+      "iteration": 1,
+      "attempt": 1,
+      "verdict": "pass",
+      "acceptance": [
+        {
+          "id": "A1",
+          "result": "passed",
+          "reason": "三类组合可切换（COMBOS app/change_detection_webui.py:380-384，选择器 1227-1228，on_combo 1042-1048）；界面仿真确认每次切换控件显隐、热力图 src、gallery 与统计同步变化，same_day 仅 1 张图并标注“同一观测，两通道”，cross_day 2 张按 A/B 日期标注；33 瓦片×3 组合全量遍历均产生非空统计。"
+        },
+        {
+          "id": "A2",
+          "result": "passed",
+          "reason": "pair_distance (230-254) 与独立 numpy 复算 max|Δ|=1.4e-7；C01 visible|nir 同日基线渲染 PNG 与独立 colourise((1-cos)/2) 逐像素 100% 一致（maxdiff 0），另 8 组 ≥99.9878%、maxdiff≤1；C0/2d ratio ∈ [1.999999, 2.000001]；distance_maps 仅取 common_mask，未混入自带数值。"
+        },
+        {
+          "id": "A3",
+          "result": "passed",
+          "reason": "残差实现 (585-600) 严格为 base=d(A_ref,B_ref)、fwd=d(A_ref,B_other)-base、rev=d(B_ref,A_other)-base、sym=(fwd+rev)/2 并截断 [-1,1]；9 组×3 方向渲染与独立复算逐像素一致，sym 与 (fwd+rev)/2 max|Δ|=0；界面均值 0.2365/-0.0280/+0.0114/-0.0394/-0.0083 与 numpy 差<5e-4；带符号视图蓝/白/红映射正确，中阈高亮 845 = numpy |sym|>0.025 的 845，上界高亮 0。"
+        },
+        {
+          "id": "A4",
+          "result": "passed",
+          "reason": "与 baseline app_before.py 对拍 10 组同通道跨日用例（含三种显示模式、掩膜开关、多帧帧对）：热力图 PNG 字节相同、统计文本相同、gallery URL 相同、量程参数相同，差异仅为新增规格要求的元信息；原 A1–A7 逐条复验通过（默认 C01/sentinel2_full、上界高亮 0、左端=step、V01 帧对 0-2、掩膜开关 15971↔16384 且灰块消失）。"
+        },
+        {
+          "id": "A5",
+          "result": "passed",
+          "reason": "8 个单期 Landsat 瓦片在跨日类型下 A 仅 5 个 sentinel2 视图、B 仅 4 个，均无 landsat_*，元信息列出“已排除单帧视图（跨日类型不可用）”；陈旧 Landsat 选择在切瓦片/切组合时正确重置；V01 2024-09-01 显示“索引无记录”分支（含命名模式与现有 V01_sentinel2_0/2.png），与“有记录但文件不存在（含记录路径）”分支区分。"
+        },
+        {
+          "id": "A6",
+          "result": "passed",
+          "reason": "mask() 严格按 view 前缀传感器选取并缓存 (165-186)，无跨传感器与全 True 回退；C01 sentinel2 分母 15971/灰 413（互为补集）、landsat 16384/灰 0，C20 landsat 灰 2484=补集；关闭开关后抽样 9 组分母均为 16384、灰 0，且掩膜外像素按自身 d 着色（maxdiff 0）。"
+        },
+        {
+          "id": "A7",
+          "result": "passed",
+          "reason": "distribution_label (398-399) 对 full 标“分布内”、其余标“分布外（波段消融诊断）”，混合判断 864-866；C01 全部 10 个视图在 A/B 两个位置均正确标注，full|visible 显示“分布内 vs 分布外混合对照”；33 瓦片×3 组合遍历后页面文本不含准确率/精度/置信度/accuracy/precision/ground truth/真值。"
+        }
+      ],
+      "risks": [
+        "非阻塞：先选瓦片（非跨日组合）再切到跨日类型时，B 帧未重置为末帧（state 初始化于 C01，仅 on_tile 且 combo=='cross_day' 时重置），实测 V01 该路径下 A=0、B=1（2024-09-01，缺图日），而规格要求 B 默认末帧 n-1=2；结果自洽、提示正确，属默认值偏差。",
+        "非阻塞：同日跨通道共享帧选项按 view_a 帧数生成、计算按两通道最小帧数钳制；当前 53/53 组同传感器视图帧数一致，不可达。",
+        "非阻塞：threshold_scale 在 maximum==1.0 时上界截断为 1.0，字面不再“严格大于 m”，但 count(q>x)==0 不变量仍成立。",
+        "数据集口径提示：C0_epoch_e 对应第 e 帧，而 C1_*/same_modality_* 对应首帧→末帧（V01 为 0→2）；实现未使用这些数值。"
+      ],
+      "summary": "7 项验收全部通过。独立 numpy 复算、渲染 PNG 逐像素比对、UI 交互驱动与 baseline 对拍共同确认：d=(1-cos)/2 与数据集 1-cos 严格 2 倍且不混用；跨日残差与 sym=(fwd+rev)/2 逐像素成立；带符号/绝对值视图及 |r| 阈值语义正确；掩膜严格按传感器选取且关闭后 16384 像素全参与；单期 Landsat 无不可算组合，V01 缺图两分支区分正确；所有非 full 视图均有 OOD 标记且无真值/精度表述；同通道跨日与改动前逐字节一致。仅余一处非阻塞默认帧偏差。"
+    }
+  }
+}

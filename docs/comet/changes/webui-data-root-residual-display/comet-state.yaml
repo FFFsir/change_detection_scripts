@@ -1,0 +1,99 @@
+schema: comet.native.v4
+name: webui-data-root-residual-display
+language: zh-CN
+phase: shape
+status: await-user
+state_version: 5
+brief: brief.md
+shape_confirmation_hash: 11c07022e3d2d61499d45ac818984e7ac8951febb9000dcf2d3e9669090e7133
+spec_changes:
+  - capability: change-detection-webui
+    operation: modify
+    source: specs/change-detection-webui/spec.md
+workspace:
+  isolation: current
+  change_branch: null
+  target_branch: null
+  finish: null
+loop:
+  stage: await-user
+  goal_cycle: 2
+  iteration: 0
+  attempt: 0
+  retry_epoch: 0
+  failed_iteration_count: 0
+  no_progress_count: 0
+  execution_failure_count: 0
+  previous_unresolved_ids: []
+  next_action: confirm-shape
+acceptance:
+  - id: A1
+    source: brief.md
+    text: A1：界面存在数据根目录输入框，初始值等于当前生效的数据根（默认 `data/spectral` 的绝对路径；瓦片目录名不是 `tiles`
+      时显示该瓦片目录路径，以保证原样再次应用得到同一结果）；输入另一个合法数据包路径并应用后，瓦片下拉、gallery
+      图像、热力图与统计随新目录更新，无需重启进程；输入不存在或结构不完整的路径时显示错误提示，且不破坏当前已加载的数据（含用户已调阈值）。
+    result: pending
+    reason: null
+  - id: A2
+    source: brief.md
+    text: A2：路径解析同时接受数据包根（含瓦片容器与
+      `gallery/`）与直接包含瓦片子目录的瓦片容器（名称不限）；同一数据根下存在多个候选容器时要求直接指定其中一个；切换后若原瓦片在新根不存在，自动回退到新根内第一个可用瓦片并完成一次完整刷新。
+    result: pending
+    reason: null
+  - id: A3
+    source: brief.md
+    text: A3：组合类型切到跨日跨通道时（含首次进入），残差方向为「正向」、残差取值为「绝对值」；离开该组合后再次进入仍回到该默认；用户手动改动后在本组合内切换瓦片/通道/帧保持其选择。
+    result: pending
+    reason: null
+  - id: A4
+    source: brief.md
+    text: A4：三种组合类型的热力图都按「档」离散着色：色阶模式可切换「固定分段」与「动态分段」，档数可由整数输入框调整（默认
+      12），档间等值线边界可开关（默认开启）；固定模式使用全量程（非负 `[0,1]`、带符号
+      `[-1,1]`），动态模式使用与阈值量程一致的自适应上界 `x`（非负 `[0,x]`、带符号
+      `[-x,x]`）；色条同步显示离散档位与量程端点；色阶只影响显示，不改变阈值、超阈值统计与量程；二值掩膜模式不绘制档间边界线（其余两种模式按开关生效）。
+    result: pending
+    reason: null
+  - id: A5
+    source: brief.md
+    text: A5：瓦片选择器下方显示当前瓦片的中心经纬度（从 `tile_manifest.json` 的 `parent` 解析，如 `E121.4790 /
+      N25.1724`）；切换瓦片时文本同步更新；无坐标信息的瓦片（如 `V01`）显示明确的“无坐标信息”提示而不是空白或错误数值。
+    result: pending
+    reason: null
+  - id: A6
+    source: brief.md
+    text: A6：说明书覆盖启动方式、数据路径、组合类型、通道/帧选择、残差方向与取值、阈值、显示模式、common_mask、坐标信息与缺图提示，并对每个选项说明用途与取值含义；文档中的操作与当前实现一致。
+    result: pending
+    reason: null
+  - id: A7
+    source: brief.md
+    text: A7：三种组合类型切换、同日跨通道与 C0 的严格 2 倍关系、跨日跨通道残差与对称化公式、单期 Landsat
+      过滤、掩膜按传感器选取、三栏独立滚动、common_mask 默认关闭等既有行为均不回归。
+    result: pending
+    reason: null
+builder_handoff: null
+blockers: []
+verification: null
+history:
+  - goal_cycle: 1
+    iteration: 1
+    attempt: 0
+    outcome: recovery
+    unresolved_ids: []
+    summary:
+      text: Native Shape artifacts changed
+      truncated: false
+    completed_at: 2026-10-31T06:10:02.517Z
+history_overflow:
+  dropped_entries: 0
+  first_dropped_at: null
+  last_dropped_at: null
+  outcome_counts:
+    pass: 0
+    fail: 0
+    blocked: 0
+    execution-error: 0
+    recovery: 0
+verification_result: pending
+verification_report: null
+archived: false
+created_at: 2026-10-31T04:56:36.705Z

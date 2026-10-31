@@ -1,0 +1,43 @@
+{
+  "kind": "builder-handoff",
+  "summary": "在 app/change_detection_webui.py 中新增组合类型选择器与同日跨通道、跨日跨通道两类组合，同通道跨日保持原有 pair_distance 实现不变。cross_day 计算 base=d(A_ref,B_ref)、fwd=d(A_ref,B_other)-base、rev=d(B_ref,A_other)-base、sym=(fwd+rev)/2，均截断到 [-1,1]；提供正向/反向/对称化三视图（默认对称化）与带符号/绝对值两种取值（默认带符号）；带符号视图用 [-1,1] 发散色阶，阈值/高亮/超阈值统计统一作用于 |残差|，页面写明该映射。同日跨通道使用共享帧选择器，只渲染一张 gallery 图并标注“同一观测，两通道”。通道按视图传感器前缀取 common_mask，A/B 限定同传感器且不同视图，跨日类型 B 帧排除与 A 相同的日期。元信息逐通道显示传感器、波段、日期、帧号与分布内/分布外标记，混合时显示“分布内 vs 分布外混合对照”。切换瓦片时跨日帧重置为 A 首帧、B 末帧中日期不同者。",
+  "addressed_acceptance_ids": ["A1", "A2", "A3", "A4", "A5", "A6", "A7"],
+  "checks": [
+    {
+      "name": "python -m py_compile app/change_detection_webui.py",
+      "result": "passed",
+      "note": "语法检查通过"
+    },
+    {
+      "name": "docs/comet/changes/webui-cross-channel-change/scratch/verify_facts.py",
+      "result": "passed",
+      "note": "数据事实全部通过：S2 33 瓦 67 epoch、Landsat 20 瓦 32 epoch、单期 Landsat 8 个、gallery 98 键且仅 V01/sentinel2/2024-09-01 缺图、common_mask 同传感器内一致、组合规模 594/188/282 与含 full 的 990/235/470"
+    },
+    {
+      "name": "docs/comet/changes/webui-cross-channel-change/scratch/verify_impl.py",
+      "result": "passed",
+      "note": "独立 numpy 复算：d 与被测实现 max|Δ|=7.6e-08；C0 = 2×d 且 ratio∈[1.999999,2.000001]；三组瓦片残差与对称化公式成立；8 个单期 Landsat 跨日无视图；C01 两传感器掩膜不同；阈值上界高亮为 0、左端>0；带符号渲染高亮按 |r|；源码无真值/精度/置信度表述"
+    },
+    {
+      "name": "browser verification on http://127.0.0.1:8123/",
+      "result": "passed",
+      "note": "实际点击验证：三类可切换且控件/热力图/图像/统计无刷新同步；同日跨通道仅一张图并标注“同一观测，两通道”；cross_day 统计显示基线均值 0.2365、正向 -0.0280、反向 +0.0114、对称化 -0.0083 与独立复算一致；C05 跨日 A/B 均无 Landsat 视图、同日列出 10 个视图；landsat_full|landsat_nir 显示混合对照；V01 2024-09-01 显示“索引无记录”与现有 V01_sentinel2_0/2.png；掩膜关闭后分母 16384；三种显示模式与带符号/绝对值切换均正常；阈值填 999 后钳制到上界且高亮 0"
+    },
+    {
+      "name": "exhaustive tile x combo sweep",
+      "result": "passed",
+      "note": "33 瓦片全量遍历：same_channel 225 个可用视图、same_day 1060 个有序同传感器通道对、cross_day 1880 个有序通道对×异日期帧对，无不可算组合与越界"
+    }
+  ],
+  "known_limits": [
+    "数据集不含变化参考标注，跨日跨通道结果仅为探索性对照，界面不提供精度或置信度结论。",
+    "跨通道限定同一传感器；跨传感器比较未实现，也不在本 change 范围内。",
+    "验证在 C01/C05/C17/V01/N01 等代表性瓦片与全量数据级穷举上进行，未对全部 33 瓦片逐一做浏览器点击。",
+    "gallery 缺少 V01/sentinel2/2024-09-01 的整幅图，该日期在跨日组合下显示缺图提示而非图像。"
+  ],
+  "review": {
+    "status": "passed",
+    "summary": "独立只读复核确认计算口径、掩膜选取、带符号阈值语义、视图/帧过滤、图像区域与回调同步均符合规格；复核提出的 4 项非阻塞偏差（瓦片选择器未显示 split、切换瓦片沿用旧 B 帧、滑块无常驻阈值文本、主行无横向滚动、以及 emb_b[ref] 未防御帧数不等）已在提交前全部修正并复验。",
+    "reviewer_execution_ref": "webui-cross-channel-review-20261027-r1"
+  }
+}

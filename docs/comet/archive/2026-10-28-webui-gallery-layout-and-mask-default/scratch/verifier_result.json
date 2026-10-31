@@ -1,0 +1,45 @@
+{
+  "kind": "verifier-response",
+  "response": {
+    "kind": "final-result",
+    "result": {
+      "iteration": 1,
+      "attempt": 1,
+      "verdict": "fail",
+      "acceptance": [
+        {
+          "id": "A1",
+          "result": "passed",
+          "reason": "1600x900 实测两张 gallery 图均为 286.9x648、y 均为 96、x=964/1282 且右边界 1569<1600，同高同顶边且同时可见；从页面 data URL 解码得到 340x768，逐像素等于 PIL ROTATE_270(磁盘 768x340)。同日跨通道仅一列可见并标注“同一观测，两通道”；V01 2024-09-01 缺图提示 4 行、white-space:pre-line；data/ 1448 个文件前后 sha256 完全一致。"
+        },
+        {
+          "id": "A2",
+          "result": "passed",
+          "reason": "DOM 热力图逐像素等于 np.rot90(独立 render_rgb(...), k=-1)（maxdiff=0），与 PIL ROTATE_270 元素级一致；角点验证为顺时针（heat[0,0]==plain[127,0]，heat[0,127]==plain[0,0]）；三类标题均含“顺时针旋转 90°”；旋转前后 summarise 与 threshold_scale 完全相同。"
+        },
+        {
+          "id": "A3",
+          "result": "failed",
+          "reason": "阻塞性视觉回归：左栏色条在 1600x900/500/400 的计算高度均为 0px（基线为 14px），渐变条不可见，违反规格“显示色条”与“布局变化不影响图像内容”。根因是色条作为 h-full + overflow-y-auto flex 列的子项未设 shrink-0。滚动、短视口、窄窗口的其余断言本身全部通过。"
+        },
+        {
+          "id": "A4",
+          "result": "passed",
+          "reason": "初始 switch aria-checked=false、分母 16384、热力图中性灰像素 0；开启后 C01 分母 15971、灰色像素 413 且与 np.rot90(~mask) 逐像素一致；C02 量程 (0,0.32800]→(0,0.296637]、阈值 0.29848→0.146850。"
+        },
+        {
+          "id": "A5",
+          "result": "passed",
+          "reason": "三种组合切换正常；同日 C02 热力图与独立 numpy base 逐像素相等，C0/base∈[2.000000,2.000001]；跨日 V01 sym 与 C05 fwd 均与独立复算逐像素相等且 sym=(fwd+rev)/2；8 个单期 Landsat 瓦片跨日无 landsat_* 视图；掩膜按 view 前缀选取（C01 15971 vs 16384、C20 14405 vs 13900）；同通道跨日 740 项对拍中 444 个 PNG 与基线字节级相同。"
+        }
+      ],
+      "risks": [
+        "非阻塞：三栏使用 overflow-y:auto，内容不溢出时不显示滚动条，与“常驻可见”的字面要求有差距；溢出时 10px 细滚动条正常出现。",
+        "非阻塞：1600x400 下 520px 热力图需在中间栏内滚动访问，属视口高度限制。",
+        "非阻塞：1024/640 窄窗口下需横向滚动才能看到图像栏，规格允许横向滚动。",
+        "非阻塞：threshold_scale 在 maximum=1.0 时上界截断为 1.0，该行为继承自基线。"
+      ],
+      "summary": "A1、A2、A4、A5 全部通过；A3 的滚动、短视口、窄窗口断言通过，但三栏布局把左栏色条压成 0px（基线 14px），违反规格“显示色条”，属可直接修复的阻塞性视觉回归，故总判定 fail。修复（色条加 shrink-0）后需复验 A3。"
+    }
+  }
+}

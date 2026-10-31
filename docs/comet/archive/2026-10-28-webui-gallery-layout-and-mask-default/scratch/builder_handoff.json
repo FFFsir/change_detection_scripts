@@ -1,0 +1,54 @@
+{
+  "kind": "builder-handoff",
+  "summary": "完成四项用户可见界面调整：(1) gallery 原图在内存中顺时针旋转 90°（Pillow ROTATE_270，768x340 -> 340x768）并左右并排显示，按旋转后宽高比以 72vh 限高缩放，缓存为 PNG data URL（12 条 LRU），不写 data/；(2) 热力图渲染后以 np.rot90(rgb, k=-1) 做同一顺时针 90° 变换，标题标注旋转角度，旋转为纯显示变换不影响统计与量程；(3) 整页固定为视口高度并禁止滚动，三栏各自 overflow-y:auto 独立滚动，配 10px 常驻细滚动条样式，热力图加 shrink-0 防止短视口被压缩裁切，图像栏加 min-w-[360px] 防止窄窗口塌缩至不可见；(4) common_mask 开关默认关闭，pair_distance 的 use_mask 默认值同步改为 False。另修复复核指出的非阻塞项：caption 日期前置并加完整文本 tooltip，两张图顶边由 self-start 与固定 caption 高度保证一致。",
+  "addressed_acceptance_ids": ["A1", "A2", "A3", "A4", "A5"],
+  "checks": [
+    {
+      "name": "python -m py_compile app/change_detection_webui.py",
+      "result": "passed",
+      "note": "语法检查通过"
+    },
+    {
+      "name": "same-channel regression vs archived baseline app_before.py",
+      "result": "passed",
+      "note": "6 组瓦片/视图/帧对 x 掩膜开/关 x 三种显示模式 + 统计，共 42 项对比全部 np.array_equal 一致（pair_distance / render_rgb / summarise 未改动）"
+    },
+    {
+      "name": "docs/comet/archive/2026-10-27-webui-cross-channel-change/scratch/verify_impl.py",
+      "result": "passed",
+      "note": "独立 numpy 复算全部通过：d 与实现 max|Δ|=7.6e-8、C0=2xd、残差与对称化公式、单期 Landsat 过滤、掩膜按传感器、阈值语义、无真值表述"
+    },
+    {
+      "name": "rotation consistency check",
+      "result": "passed",
+      "note": "np.rot90(rgb, k=-1) 与 Pillow Image.Transpose.ROTATE_270 元素级完全相同，图像与热力图使用同一顺时针变换；旋转前后 summarise 与 threshold_scale 结果不变"
+    },
+    {
+      "name": "browser viewport sweep 1600x900 / 1600x500 / 1600x400 / 1280x800 / 1024x768 / 800x700 / 640x600",
+      "result": "passed",
+      "note": "热力图恒为 520x520（shrink-0 生效，fit=contain 无裁切），短视口下中间栏产生 80/180px 可滚动溢出；右栏恒 >=360px，两图各 172px 均可见，外层 row 可横向滚动（1024 下可滚 316px、640 下 700px）；整页 scrollHeight==clientHeight 且 scrollY 恒为 0"
+    },
+    {
+      "name": "browser mask default and toggle",
+      "result": "passed",
+      "note": "初始 aria-checked=false，分母 16384，热力图无中性灰块；开启后分母 15971、出现 413 个灰色掩膜像素；C02 上量程由 (0,0.328] 变为 (0,0.296637]，切换时重算正确"
+    },
+    {
+      "name": "browser caption and missing-image checks",
+      "result": "passed",
+      "note": "长视图名 sentinel2_reflective_ir 在 1280x800 下 caption 完整显示且 clipped=false，带完整文本 title；V01 2024-09-01 缺图提示保留 4 行（pre-line），另一列图像不受影响；同日跨通道仅 1 张图并标注“同一观测，两通道”"
+    }
+  ],
+  "known_limits": [
+    "旋转为显示层变换：最终显示的 PNG 与已归档版本不同，这是本 change 的预期变更；与基线一致的部分是数值与旋转前 RGB 渲染（已 42 项字节级对拍确认）。",
+    "窄视口（<=1024px）下三栏最小宽度合计约 1340px，需横向滚动才能看到图像栏；此时 gallery 首屏不完全可见，属三栏固定宽度的预期取舍。",
+    "1600x400 等极短视口下 520px 热力图无法一屏全见，需在中间栏内纵向滚动，属视口尺寸限制而非缺陷。",
+    "captions 固定两行高度（2.75rem）；超长视图名在极窄列宽下末尾仍可能被裁剪，完整内容通过 title tooltip 与元信息栏获得。",
+    "数据集不含变化参考标注，跨日跨通道结果仅为探索性对照，界面不提供精度或置信度结论。"
+  ],
+  "review": {
+    "status": "passed",
+    "summary": "第一轮复核判定 failed，指出 2 个阻塞缺陷（短视口热力图被 flex 压缩并由 object-fit:cover 裁切导致永久不可见；窄窗口右栏塌缩到 0 使图像无法露出）与若干非阻塞项。修复后第二轮复核确认两项阻塞均已真正解决：热力图在 1600x500/400 下恒为 520x520 且中间栏可滚动 80/180px 至热力图完整可见；右栏在 1024/800/640 下恒为 360px，两图各 172px 完整可见且外层可横向滚动。复核另指出长视图名在窄视口下 caption 日期被截断（非阻塞），已改为日期前置并加 title tooltip 后复验通过。复核同时确认 pair_distance 默认值改 False 未影响任何调用点、reset_cross_defaults 空视图防护到位、33 瓦片 x 全部视图 x 全部帧对 x 掩膜开/关共 470 例与基线一致。",
+    "reviewer_execution_ref": "rev-webui-gallery-20261028T132036+0800-25a9"
+  }
+}

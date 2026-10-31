@@ -1,0 +1,322 @@
+schema: comet.native.v4
+name: aef-unsupervised-change-webui
+language: zh-CN
+phase: archive
+status: done
+state_version: 25
+brief: brief.md
+shape_confirmation_hash: aa6ba040e2b5c71d8e2abaa62c66548074f418842204b3aec1bbdf8325365ad5
+spec_changes:
+  - capability: change-detection-webui
+    operation: create
+    source: specs/change-detection-webui/spec.md
+workspace:
+  isolation: current
+  change_branch: null
+  target_branch: null
+  finish: null
+loop:
+  stage: done
+  goal_cycle: 5
+  iteration: 2
+  attempt: 1
+  retry_epoch: 0
+  failed_iteration_count: 0
+  no_progress_count: 0
+  execution_failure_count: 0
+  previous_unresolved_ids: []
+  next_action: null
+acceptance:
+  - id: A1
+    source: brief.md
+    text: A1：启动应用后，默认加载一个瓦片与视图，页面同时呈现该 view 两帧之间的变化热力图，以及与这两帧日期对应的 gallery 图像。
+    result: passed
+    reason:
+      text: 重载后默认 C01/sentinel2_full，热力图 128x128，两张 gallery 图与日期 2024-02-29 ->
+        2024-11-30 同时呈现。
+      truncated: false
+  - id: A2
+    source: brief.md
+    text: A2：热力图颜色由 `d = (1 - cos) / 2` 计算，取值与像素级计算一致，范围为 `[0, 1]`；任意像素的计算结果与直接用
+      numpy 对嵌入向量求 `1 - dot` 再除以 2 得到的值一致。
+    result: passed
+    reason:
+      text: 独立 numpy 复算 d=(1-cos)/2，像素级 RGB 校验和完全一致；中位数/p95/最大值为 0.0579/0.1738/0.3366
+        与独立计算一致。
+      truncated: false
+  - id: A3
+    source: brief.md
+    text: A3：页面上存在一个阈值控件，其量程为 `(0, x]`：`x` 由当前图像对自动计算并满足"阈值等于 `x` 时高于阈值的像素数为
+      0"，左端无法取到 `0`（最小值为一个步长）。拖动后无需刷新页面即可看到高于阈值的像素在热力图上被高亮，且滑块到顶时高亮数恰为 0。
+    result: passed
+    reason:
+      text: 修复字符串 props 根因后真实鼠标拖动全程可用：C01 拖到 0.188496 得 605/15971 与独立复算一致；到顶 0.339966
+        得 0/15971；到左端 0.003366 得 15971/15971（不为 0）；拖动后无 JS 异常、body 无
+        no-pointer-events，下拉与开关仍可点击。C02/C11 及 C11 nir 小量程同样通过。
+      truncated: false
+  - id: A4
+    source: brief.md
+    text: A4：页面显示当前阈值下高于阈值的像素数量与占比，数值随阈值变化实时更新。
+    result: passed
+    reason:
+      text: 统计实时显示超阈值数与占比，C11 nir 关闭掩膜后 0.041->0.02009 的像素差异恰为 54，与统计及二值模式下红色像素数一致。
+      truncated: false
+  - id: A5
+    source: brief.md
+    text: A5：切换瓦片或视图后，热力图与 gallery 图像同步更新，且显示的图像日期与该 view 所比较的两帧日期一致。
+    result: passed
+    reason:
+      text: C01->C02->C11 量程重算为 0.339966/0.296637/0.141198，默认值
+        0.299574/0.146850/0.069900 与独立复算一致；gallery 文件名与日期同步；视图
+        sentinel2_full->sentinel2_nir 量程重算且滑块仍可拖动。
+      truncated: false
+  - id: A6
+    source: brief.md
+    text: A6：对于 `frames > 2` 的 V01，可以选择不同的帧对；选择变化后热力图随之更新。
+    result: passed
+    reason:
+      text: V01 提供 3 个帧对选项，默认 0->2；切换后量程/默认值/热力图更新（131->142 超阈值，独立复算一致）；中间帧缺图按规格提示。
+      truncated: false
+  - id: A7
+    source: brief.md
+    text: A7：页面提供 `common_mask` 开关，默认开启。开启时掩膜外像素在热力图中显示为中性灰且不计入统计；关闭后全部 16384
+      个像素都按距离着色并计入统计，热力图上不再出现中性灰块，统计分母随之从有效像素数变为全部像素数。切换开关无需刷新页面即可看到结果变化。
+    result: passed
+    reason:
+      text: 默认开启掩膜；关闭后 16384 像素全部参与、灰色块为 0、分母变为 16384；重新开启恢复（C01 413、C11 nir 7660
+        灰色像素），且开启后再次拖动成功。
+      truncated: false
+builder_handoff:
+  candidate_id: eb3f4963-ac15-43e5-8aab-0f2c5e6aae6b
+  identity_provider: skill-coordinated
+  builder_execution_ref: skill-coordinated:builder:dbbc12ed-2c67-4330-93f7-25879ed793be
+  iteration: 2
+  summary:
+    text: 阈值量程改为按图像对自适应且左开 (0, x]。threshold_scale() 计算 step≈max/100（下限 1e-4）、upper
+      取严格大于 max 的最小 step 整数倍、lower=step（阈值永不为 0）、decimals 由 step 推导、默认阈值 x>=0.30
+      取 0.30 否则 x/2 并对齐步长。rescale() 在切换瓦片/视图/帧对/掩膜开关时重算量程，整个控件更新块在 syncing
+      守卫内完成，避免 Number.sanitize 把旧阈值写回状态。本轮另修正 rescale 中重复的 set_label 调用。距离色阶仍固定
+      [0,1] 与量程解耦。
+    truncated: false
+  addressed_acceptance_ids:
+    - A1
+    - A2
+    - A3
+    - A4
+    - A5
+    - A6
+    - A7
+  checks:
+    - name:
+        text: py_compile app/change_detection_webui.py
+        truncated: false
+      result: passed
+      note:
+        text: 无语法错误
+        truncated: false
+    - name:
+        text: .venv/Scripts/python.exe .tmp_checks/adaptive_range_check.py
+        truncated: false
+      result: passed
+      note:
+        text: 450 组合 0 违规：upper>max、count(d>upper)==0、lower==step>0、default 精确落在步长网格
+        truncated: false
+    - name:
+        text: 浏览器：数值框 0/-2/0.5/999 + 失焦
+        truncated: false
+      result: passed
+      note:
+        text: 夹到 0.003366/0.003366/0.339966/0.339966，滑块与统计一致，validity.valid=true，服务端无异常
+        truncated: false
+    - name:
+        text: 浏览器：切换瓦片 C01→C02→C11
+        truncated: false
+      result: passed
+      note:
+        text: 默认阈值 0.299574/0.146850/0.069900，滑块、数值框、统计三者一致
+        truncated: false
+    - name:
+        text: 浏览器：掩膜开关重算（C11 sentinel2_nir）
+        truncated: false
+      result: passed
+      note:
+        text: 开启 0.00995/105-8724，关闭 0.0205/52-16384，切回恢复
+        truncated: false
+    - name:
+        text: 独立 Verifier 全量验收
+        truncated: false
+      result: passed
+      note:
+        text: A1-A7 全通过；225 视图/235 帧对独立复算最大差 1.51e-7；470 组合量程不变量零违规
+        truncated: false
+  checks_truncated: false
+  known_limits:
+    - text: V01 中间帧 2024-09-01 在 gallery/index.json 无记录，选择含该帧的帧对时显示缺失提示（热力图仍正确）
+      truncated: false
+    - text: 40 个单帧 Landsat 视图不参与变化检测，界面元信息列出被排除名称
+      truncated: false
+    - text: 关闭 common_mask 后云/薄雾像素进入统计，其距离不代表真实地表变化；界面已标注统计口径
+      truncated: false
+    - text: 最大距离极小的图像对受最小步长 1e-4 限制，可选档位可能少于 100
+      truncated: false
+    - text: 窄窗口（1024x800）下 gallery 图像被压缩而非横向滚动（未改动，属已知风险）
+      truncated: false
+  known_limits_truncated: false
+  review:
+    status: passed
+    summary:
+      text: 两轮独立只读复核修复了三项必修问题（props 字符串导致失焦 TypeError、固定小数位破坏步长网格、显示上界
+        rangeOverflow），并修复了 min/max setter 触发的 sanitize
+        竞态（会把旧阈值写回状态，导致滑块/数值框/统计不一致）。独立 Verifier 复验 A1-A7 全部通过，470
+        个帧对×掩膜组合量程不变量零违规。
+      truncated: false
+    reviewer_execution_ref: agent_1694c5a3-2247-4d8b-b116-d7ec86896be2
+  submitted_at: 2026-10-20T15:57:55.332Z
+blockers: []
+verification:
+  candidate_id: eb3f4963-ac15-43e5-8aab-0f2c5e6aae6b
+  identity_provider: skill-coordinated
+  verifier_execution_ref: skill-coordinated:verifier:63b5fb0a-4fdc-4711-bd41-ce69863a248c
+  iteration: 2
+  attempt: 1
+  assurance: skill-coordinated
+  verdict: pass
+  checks:
+    - id: compile-webui
+      name:
+        text: compile webui
+        truncated: false
+      argv_display:
+        - text: -m
+          truncated: false
+        - text: py_compile
+          truncated: false
+        - text: app/change_detection_webui.py
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 77
+    - id: adaptive-range-invariants-script
+      name:
+        text: adaptive threshold range invariants over all views and mask states
+        truncated: false
+      argv_display:
+        - text: .tmp_checks/adaptive_range_check.py
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 4837
+  summary:
+    text: A1-A7 全部通过。A3 的阻断性缺陷已修复：此前 rescale() 用字符串 props 下发滑块量程，导致 Quasar
+      convertRatioToModel 字符串拼接并在 toFixed 抛错、拖动失效且整页失去指针交互；改为直接写入数值 props
+      后，真实鼠标拖动、到顶归零、左端非零、切换后重算均验证通过，页面无 JS 异常。其余 6 项经独立 numpy 复算与浏览器像素级比对确认一致。
+    truncated: false
+  risks:
+    - text: V01 中间帧 2024-09-01 在 gallery/index.json 无记录，选择含该帧的帧对时显示符合规格的缺图提示（热力图正常）。
+      truncated: false
+    - text: 40 个单帧 Landsat 视图按设计排除，界面元信息列出被排除名称。
+      truncated: false
+    - text: 最大距离极小的图像对受最小步长 1e-4 限制，可选档位可能少于 100。
+      truncated: false
+    - text: 窄窗口（1024x800）下 gallery 图像被压缩而非横向滚动（此前记录的已知风险，本次未改动）。
+      truncated: false
+  risks_truncated: false
+  completed_at: 2026-10-20T16:16:24.981Z
+history:
+  - goal_cycle: 1
+    iteration: 1
+    attempt: 0
+    outcome: recovery
+    unresolved_ids: []
+    summary:
+      text: Native Shape artifacts changed
+      truncated: false
+    completed_at: 2026-10-20T14:14:31.599Z
+  - goal_cycle: 2
+    iteration: 0
+    attempt: 0
+    outcome: recovery
+    unresolved_ids: []
+    summary:
+      text: Native confirmed acceptance criteria changed
+      truncated: false
+    completed_at: 2026-10-20T14:32:37.991Z
+  - goal_cycle: 3
+    iteration: 1
+    attempt: 1
+    outcome: pass
+    unresolved_ids: []
+    summary:
+      text: 7 项验收全部通过：距离公式、掩膜按传感器选择、三种显示模式、阈值实时高亮与统计、瓦片/视图/帧对切换均经独立 numpy 全量复算（225
+        视图/235 帧对/385 万像素对/4230 渲染组合）与真实浏览器交互验证，数值与渲染一致；common_mask
+        开关默认开启、关闭后无灰块且分母变为 16384、切换无需刷新。
+      truncated: false
+    completed_at: 2026-10-20T14:48:37.122Z
+  - goal_cycle: 3
+    iteration: 1
+    attempt: 1
+    outcome: recovery
+    unresolved_ids: []
+    summary:
+      text: 用户要求把阈值滑块范围从固定 [0,1] 改为按当前图像对自适应的 (0, x]，x 取该图像对超阈值像素数变为 0 的边界。这会改变验收 A3
+        与约束条目，需要回到 Shape 更新需求。
+      truncated: false
+    completed_at: 2026-10-20T14:55:32.603Z
+  - goal_cycle: 4
+    iteration: 0
+    attempt: 0
+    outcome: recovery
+    unresolved_ids: []
+    summary:
+      text: Native confirmed acceptance criteria changed
+      truncated: false
+    completed_at: 2026-10-20T14:59:11.061Z
+  - goal_cycle: 5
+    iteration: 1
+    attempt: 1
+    outcome: execution-error
+    unresolved_ids: []
+    summary:
+      text: "Native Verifier response was invalid: Native verification cannot pass
+        before every required check succeeds"
+      truncated: false
+    completed_at: 2026-10-20T15:57:05.108Z
+  - goal_cycle: 5
+    iteration: 1
+    attempt: 1
+    outcome: recovery
+    unresolved_ids: []
+    summary:
+      text: 检查计划中该项以 -c 单行编写导致语法失败（非实现缺陷），且已修正 rescale 的重复标签调用；回到 Build
+        重新提交候选与脚本形式的检查计划。
+      truncated: false
+    completed_at: 2026-10-20T15:57:52.127Z
+  - goal_cycle: 5
+    iteration: 2
+    attempt: 1
+    outcome: pass
+    unresolved_ids: []
+    summary:
+      text: A1-A7 全部通过。A3 的阻断性缺陷已修复：此前 rescale() 用字符串 props 下发滑块量程，导致 Quasar
+        convertRatioToModel 字符串拼接并在 toFixed 抛错、拖动失效且整页失去指针交互；改为直接写入数值 props
+        后，真实鼠标拖动、到顶归零、左端非零、切换后重算均验证通过，页面无 JS 异常。其余 6 项经独立 numpy 复算与浏览器像素级比对确认一致。
+      truncated: false
+    completed_at: 2026-10-20T16:16:24.981Z
+history_overflow:
+  dropped_entries: 0
+  first_dropped_at: null
+  last_dropped_at: null
+  outcome_counts:
+    pass: 0
+    fail: 0
+    blocked: 0
+    execution-error: 0
+    recovery: 0
+verification_result: pass
+verification_report: verification.md
+archived: true
+created_at: 2026-10-20T13:22:34.295Z

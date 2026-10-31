@@ -1,0 +1,290 @@
+schema: comet.native.v4
+name: webui-gallery-layout-and-mask-default
+language: zh-CN
+phase: archive
+status: done
+state_version: 16
+brief: brief.md
+shape_confirmation_hash: 18c18bb0c99062c5db4003bbaf05241c680884a641252e928cbbaade0ef8d9ca
+spec_changes:
+  - capability: change-detection-webui
+    operation: modify
+    source: specs/change-detection-webui/spec.md
+workspace:
+  isolation: current
+  change_branch: null
+  target_branch: null
+  finish: null
+loop:
+  stage: done
+  goal_cycle: 2
+  iteration: 2
+  attempt: 2
+  retry_epoch: 0
+  failed_iteration_count: 1
+  no_progress_count: 0
+  execution_failure_count: 0
+  previous_unresolved_ids: []
+  next_action: null
+acceptance:
+  - id: A1
+    source: brief.md
+    text: A1：gallery 图像顺时针旋转 90° 后左右并排显示，两帧同高同顶边、同时可见；同日跨通道只显示一张；`data/`
+      下文件未被修改；缺图提示保留多行换行。
+    result: passed
+    reason:
+      text: 实现于 app/change_detection_webui.py:230-259 在内存中用 PIL ROTATE_270 顺时针旋转并缓存
+        data URL（save 仅写 BytesIO:254，无磁盘写）。1600x900 实测两张 gallery 原图 340x768、显示
+        286.9x648，顶边均为 y=96（x=964/1282），左右并排且同屏；同日跨通道第二列隐藏（第二张 img
+        0x0），仅一张图并标注“同一观测，两通道 · 2024-02-29 · A=sentinel2_visible /
+        B=sentinel2_nir”。V01 帧 0→1 缺图提示为 pre-line、高 120px、四行完整。data/ 1448 个文件最新
+        mtime 2026-10-16，前后路径+大小聚合 SHA-256 均为 252048196c807492…，无增删。
+      truncated: false
+  - id: A2
+    source: brief.md
+    text: A2：热力图与 gallery 图像使用同一顺时针 90° 变换（元素级一致），标题标注旋转；旋转不改变统计数值与阈值量程。
+    result: passed
+    reason:
+      text: 热力图 :785 使用 np.rot90(rgb,k=-1)，gallery :251 使用 Pillow
+        ROTATE_270；实测两者逐元素完全相等，原图左下角 [18,28,41] 旋转后位于左上角，确认为顺时针。浏览器热力图 RGBA 哈希
+        8299709162ee88e7… 与 Python 独立渲染后旋转结果一致；两张 gallery 哈希 355fc87d310af60a… /
+        9c8897c144cc6319… 与 Python ROTATE_270 结果一致。三种组合标题均含“顺时针旋转 90°”。对旋转前后数组调用
+        summarise/threshold_scale 结果完全相同；五视口统计恒为量程 (0,0.339966]、步长 0.003366、最大
+        0.336637、27/16384、中位数 0.0578、p95 0.1727、最大 0.3366。
+      truncated: false
+  - id: A3
+    source: brief.md
+    text: A3：整页不产生纵向滚动（`scrollHeight == clientHeight`、`window.scrollY` 恒为
+      0）；三栏各自可独立纵向滚动；滚动左栏时热力图与图像的屏幕 y 坐标不变。
+    result: passed
+    reason:
+      text: 五视口 scrollHeight==clientHeight（900/500/400/768/600），scrollTo(0,500) 后
+        scrollY 恒 0。左栏 924/868 可滚；中栏 1600x500 为 548/468（最大滚 80）、1600x400 为
+        548/368（最大滚 180），热力图恒 520x520，滚到底底边分别与栏底 484/384 对齐。左栏滚 80px 时热力图 y
+        44→44、两图 y 96→96；右栏注入 800px 临时内容后 1540/868、scrollTop=672，热力图 y 仍 44，左/中栏
+        scrollTop 仍 0。1024/640 窄窗右栏宽 360，两图 172x553 / 172x432、同 y=96 同高，横向滚到
+        316/700 后均完整入屏。色条五视口均 342x14，外层 flex-shrink:0，512x1 哈希 19960ebf03d6445a…
+        与独立 colourise(linspace(0,1,512)) 一致。
+      truncated: false
+  - id: A4
+    source: brief.md
+    text: A4：页面初始 `common_mask` 开关为关闭，统计分母为
+      16384、热力图无中性灰掩膜块；开启后分母变为掩膜像素数并出现灰色掩膜块；切换时阈值量程按当前像素集合重算。
+    result: passed
+    reason:
+      text: 初始 switch aria-checked=false（state["use_mask"]=False，:543），元信息“common_mask
+        = 关闭 … 全部 16384 像素参与着色与统计”，统计分母 16384；热力图哈希与 Python 未掩膜渲染一致，中性灰像素
+        0。开启后分母 15971、显示“掩膜外像素 = 413”，热力图哈希 163bcfd9… 与 Python 掩膜渲染一致且灰块恰 413
+        像素。C02 实测切换重算：关闭 (0,0.32800] 步长 0.00328 最大 0.32797 默认 0.29848；开启
+        (0,0.296637] 步长 0.002937 最大 0.293705 默认 0.146850；两态均满足
+        count(q>upper)==0。
+      truncated: false
+  - id: A5
+    source: brief.md
+    text: A5：三种组合类型切换正常；同日跨通道数值可由独立 numpy 复算逐像素复现且与 C0 严格 2 倍；跨日跨通道残差与对称化公式成立；8 个单期
+      Landsat 瓦片跨日类型无 Landsat 视图；掩膜仍按传感器选取。
+    result: passed
+    reason:
+      text: 三种组合类型浏览器切换即时更新。独立 numpy 复算与 pair_distance 逐像素最大差 0；33 个含 C0 瓦片均满足
+        C0_epoch_t == 2*d(visible_t,nir_t)（最大差 2.38e-7，比值
+        1.9999990–2.0000014）；同日 C01 热力图哈希 d4aed7a5…、统计 1843/16384、中位 0.2259、p95
+        0.3325、max 0.4789 逐项复现。跨日 C01 热力图哈希 7ca8dce4…、hot 853/16384、均值 base
+        0.2358 / fwd -0.0278 / rev +0.0111 / sym -0.0084；V01 哈希
+        0b2d840e…，均与逐像素复算一致，sym=(fwd+rev)/2 与 [-1,1] 截断成立。8 个单期 Landsat 瓦片的
+        Landsat 视图均不在跨日可选集，同日仍列全部 10 视图且单帧 Landsat 可算。掩膜按传感器：C01 sentinel2=15971
+        / landsat=16384，C05 sentinel2=16374 / landsat=16384，缺失掩膜抛
+        FileNotFoundError。同通道跨日 6 组 x 2 掩膜态 x 3 模式共 36 个“旋转前”PNG 与 app_before.py
+        字节级一致，距离/统计数组相等。
+      truncated: false
+builder_handoff:
+  candidate_id: 058940e7-380c-4d30-b1c2-0c4612cb012d
+  identity_provider: skill-coordinated
+  builder_execution_ref: skill-coordinated:builder:857b4699-cdeb-42d0-a0e3-0cf070688e11
+  iteration: 2
+  summary:
+    text: 第 2 轮修复 Verifier 在 A3 中指出的阻塞性视觉回归：三栏布局改造后，左栏色条（ui.image, h-[14px]）作为高度受限
+      flex 列的子项被 flex-shrink 压成 0px，渐变条不可见（基线同视口为 14px），违反规格“显示色条”。修复为给色条加
+      shrink-0，使其在 1600x900 / 1600x500 / 1600x400 / 1024x768 下均恒为
+      342x14，截图确认渐变条可见。其余实现未变：gallery 图顺时针旋转 90°
+      并左右并排、热力图同向旋转、三栏独立滚动、common_mask 默认关闭、短视口热力图 shrink-0 防裁切、图像栏
+      min-w-[360px] 防塌缩。
+    truncated: false
+  addressed_acceptance_ids:
+    - A3
+  checks:
+    - name:
+        text: python -m py_compile app/change_detection_webui.py
+        truncated: false
+      result: passed
+      note:
+        text: 语法检查通过
+        truncated: false
+    - name:
+        text: docs/comet/changes/webui-gallery-layout-and-mask-default/scratch/check_regression.py
+        truncated: false
+      result: passed
+      note:
+        text: 42 项同通道跨日数值/渲染/统计与归档基线对拍全部一致 + 3 项旋转一致性检查通过
+        truncated: false
+    - name:
+        text: docs/comet/archive/2026-10-27-webui-cross-channel-change/scratch/verify_impl.py
+        truncated: false
+      result: passed
+      note:
+        text: 独立 numpy 复算全部通过（d、C0 2 倍、残差与对称化、单期 Landsat、掩膜按传感器、阈值语义、无真值表述）
+        truncated: false
+    - name:
+        text: browser colorbar height at 1600x900 / 1600x500 / 1600x400 / 1024x768
+        truncated: false
+      result: passed
+      note:
+        text: 色条在四个视口下均为 342x14（修复前为 0px），截图确认渐变条可见；同时热力图恒为 520x520、整页
+          scrollHeight==clientHeight、左栏可滚动 56/456/556/203px
+        truncated: false
+  checks_truncated: false
+  known_limits:
+    - text: 旋转为显示层变换：最终显示的 PNG 与已归档版本不同，这是本 change 的预期变更；数值与旋转前 RGB 渲染与基线字节级一致（42
+        项对拍确认）。
+      truncated: false
+    - text: 窄视口（<=1024px）下三栏最小宽度合计约 1340px，需横向滚动才能看到图像栏，属三栏固定宽度的预期取舍。
+      truncated: false
+    - text: 1600x400 等极短视口下 520px 热力图无法一屏全见，需在中间栏内纵向滚动，属视口尺寸限制。
+      truncated: false
+    - text: 三栏使用 overflow-y:auto，内容不溢出时不显示滚动条（溢出时正常出现 10px 细条），与“常驻可见”的字面要求有差距，属观感取舍。
+      truncated: false
+    - text: captions 固定两行高度；超长视图名在极窄列宽下末尾可能被裁剪，完整内容通过 title tooltip 与元信息栏获得。
+      truncated: false
+  known_limits_truncated: false
+  review:
+    status: passed
+    summary:
+      text: Verifier 在 A3 指出唯一阻塞缺陷：左栏色条被 flex 压成 0px。该问题定位于左栏 scrolling column 的子项缺少
+        shrink-0，与热力图在短视口被压缩属同一类 flex 收缩问题。修复为色条加 shrink-0，四个视口实测均恢复 342x14
+        并截图确认。改动仅触及色条一个元素的 class，不影响任何数值、旋转或滚动逻辑；回归脚本 42 项与独立复算复跑仍全部通过。
+      truncated: false
+    reviewer_execution_ref: rev-webui-gallery-colorbar-fix-20261028T134500+0800-b7e2
+  submitted_at: 2026-10-28T05:34:56.531Z
+blockers: []
+verification:
+  candidate_id: 058940e7-380c-4d30-b1c2-0c4612cb012d
+  identity_provider: skill-coordinated
+  verifier_execution_ref: skill-coordinated:verifier:84b6b26d-af72-4847-af81-34d0ac22b1d4
+  iteration: 2
+  attempt: 2
+  assurance: skill-coordinated
+  verdict: pass
+  checks:
+    - id: compile-webui
+      name:
+        text: compile webui
+        truncated: false
+      argv_display:
+        - text: -m
+          truncated: false
+        - text: py_compile
+          truncated: false
+        - text: app/change_detection_webui.py
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 73
+    - id: same-channel-regression
+      name:
+        text: same-channel numerics identical to archived baseline
+        truncated: false
+      argv_display:
+        - text: docs/comet/changes/webui-gallery-layout-and-mask-default/scratch/check_regression.py
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 908
+    - id: independent-recompute
+      name:
+        text: independent numpy recompute of d and residuals
+        truncated: false
+      argv_display:
+        - text: docs/comet/archive/2026-10-27-webui-cross-channel-change/scratch/verify_impl.py
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 876
+  summary:
+    text: 独立全量验证通过：A1 旋转并排/同通道单图/缺图多行/数据只读、A2 热力图与图像同向旋转且统计量程不变、A3
+      五视口整页不滚动与三栏独立滚动及色条 342x14、A4 掩膜默认关闭且开启后分母与量程按当前像素集重算、A5 三类组合切换与 numpy
+      逐像素复算/2 倍关系/单期 Landsat 过滤/按传感器掩膜/基线字节级一致均成立。总判定 pass。
+    truncated: false
+  risks:
+    - text: 非阻塞：左栏内容高 924 > 栏高 868（1600x900），色条初始 top=898 仅 2px 入屏，需在左栏内滚动 56px
+        才完整可见；色条本身 342x14 且渲染正常，属可滚动栏的内容长度而非布局缺陷。
+      truncated: false
+    - text: 非阻塞：三栏使用 overflow-y:auto，内容不溢出时不显示滚动条，与规格“常驻可见”的字面表述有差距；溢出时 10px 细滚动条正常出现。
+      truncated: false
+    - text: 非阻塞：1600x500/1600x400 下 520px 热力图超出栏高，需分别在中栏内滚动 80/180px 访问全部；滚到底后完整可见。
+      truncated: false
+    - text: 非阻塞：窄视口（1024/640）三栏最小宽合计约 1340px，需横向滚动后图像栏才同屏；规格明确允许横向滚动。
+      truncated: false
+    - text: 非阻塞：gallery 区固定标题在同日跨通道单图模式下仍写“两帧并排”，文字与实际一张图略有出入（该标题文本由规格指定），不影响功能与数值。
+      truncated: false
+  risks_truncated: false
+  completed_at: 2026-10-28T05:48:36.296Z
+history:
+  - goal_cycle: 1
+    iteration: 1
+    attempt: 0
+    outcome: recovery
+    unresolved_ids: []
+    summary:
+      text: Native Shape artifacts changed
+      truncated: false
+    completed_at: 2026-10-28T05:23:22.163Z
+  - goal_cycle: 2
+    iteration: 1
+    attempt: 1
+    outcome: fail
+    unresolved_ids:
+      - A3
+    summary:
+      text: A1、A2、A4、A5 全部通过；A3 的滚动、短视口、窄窗口断言通过，但三栏布局把左栏色条压成 0px（基线
+        14px），违反规格“显示色条”，属可直接修复的阻塞性视觉回归，故总判定 fail。修复（色条加 shrink-0）后需复验 A3。
+      truncated: false
+    completed_at: 2026-10-28T05:34:53.838Z
+  - goal_cycle: 2
+    iteration: 2
+    attempt: 1
+    outcome: recovery
+    unresolved_ids: []
+    summary:
+      text: Repair verification passed for A3; final full verification is required.
+      truncated: false
+    completed_at: 2026-10-28T05:41:04.339Z
+  - goal_cycle: 2
+    iteration: 2
+    attempt: 2
+    outcome: pass
+    unresolved_ids: []
+    summary:
+      text: 独立全量验证通过：A1 旋转并排/同通道单图/缺图多行/数据只读、A2 热力图与图像同向旋转且统计量程不变、A3
+        五视口整页不滚动与三栏独立滚动及色条 342x14、A4 掩膜默认关闭且开启后分母与量程按当前像素集重算、A5 三类组合切换与 numpy
+        逐像素复算/2 倍关系/单期 Landsat 过滤/按传感器掩膜/基线字节级一致均成立。总判定 pass。
+      truncated: false
+    completed_at: 2026-10-28T05:48:36.296Z
+history_overflow:
+  dropped_entries: 0
+  first_dropped_at: null
+  last_dropped_at: null
+  outcome_counts:
+    pass: 0
+    fail: 0
+    blocked: 0
+    execution-error: 0
+    recovery: 0
+verification_result: pass
+verification_report: verification.md
+archived: true
+created_at: 2026-10-28T04:52:36.189Z

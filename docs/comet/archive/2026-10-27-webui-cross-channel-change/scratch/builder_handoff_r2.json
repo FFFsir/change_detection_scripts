@@ -1,0 +1,44 @@
+{
+  "kind": "builder-handoff",
+  "summary": "第 2 轮仅修复第 1 轮 Verifier 指出的非阻塞规格偏差：抽出 reset_cross_defaults()，在“切换到跨日跨通道”与“跨日类型下切换瓦片”两条入口统一把 A 设为首帧、B 设为与 A 日期不同的末帧。此前仅 on_tile 且 combo=='cross_day' 时会重置，导致“先选瓦片再切跨日”路径沿用初始化索引；实测 V01 该路径下 B 落在帧 1（2024-09-01，无 gallery 图），与规格 D6 要求的末帧 n-1=2 不符。修复后三条路径实测均正确：先选 V01 再切跨日 → A=0/B=2（无缺图）；跨日下 C01→V01 → A=0/B=2；同通道跨日 → 仍为 0→2。其余实现与第 1 轮已验收候选完全一致。",
+  "addressed_acceptance_ids": ["A1", "A3", "A4", "A5"],
+  "checks": [
+    {
+      "name": "python -m py_compile app/change_detection_webui.py",
+      "result": "passed",
+      "note": "语法检查通过"
+    },
+    {
+      "name": "docs/comet/changes/webui-cross-channel-change/scratch/verify_facts.py",
+      "result": "passed",
+      "note": "数据事实全部通过（与第 1 轮一致，未改动数据读取逻辑）"
+    },
+    {
+      "name": "docs/comet/changes/webui-cross-channel-change/scratch/verify_impl.py",
+      "result": "passed",
+      "note": "独立 numpy 复算全部通过（d、C0 2 倍关系、残差与对称化、单期 Landsat 过滤、掩膜选取、阈值语义、带符号渲染、无真值表述）"
+    },
+    {
+      "name": "same-channel regression vs scratch/app_before.py",
+      "result": "passed",
+      "note": "6 组瓦片/视图/帧对 × 掩膜开关 × 三种显示模式 + 统计，共 42 项对比全部字节级一致（pair_distance、render_rgb、summarise 均未改动）"
+    },
+    {
+      "name": "browser test of three entry paths",
+      "result": "passed",
+      "note": "先选瓦片(V01)再切跨日 → 帧数 A 3 / B 3，A 帧 0 · 2024-02-14 → B 帧 2 · 2024-11-30，缺图提示 0 处；跨日下切瓦片 C01→V01 → A 帧 0 · 2024-02-29 → B 帧 1 · 2024-11-30 后变为 A 3 / B 3 的 0→2；回到同通道跨日 → 比较帧 0 → 2，日期 2024-02-14 → 2024-11-30"
+    }
+  ],
+  "known_limits": [
+    "数据集不含变化参考标注，跨日跨通道结果仅为探索性对照，界面不提供精度或置信度结论。",
+    "跨通道限定同一传感器；跨传感器比较不在本 change 范围内。",
+    "gallery 缺少 V01/sentinel2/2024-09-01 的整幅图；手动把 B 帧选到该日期时仍会显示“索引无记录”提示（符合规格），但默认路径不再落在该帧。",
+    "同日跨通道共享帧选项按 view_a 帧数生成、计算按两通道最小帧数钳制；当前 53/53 组同传感器视图帧数一致，该分支不可达。",
+    "threshold_scale 在 maximum==1.0 时上界截断为 1.0，字面上不再严格大于 m，但 count(q>x)==0 不变量仍成立。"
+  ],
+  "review": {
+    "status": "passed",
+    "summary": "本轮改动为单一函数的提取与两处调用点统一，属第 1 轮独立 Verifier 已指出偏差的定向修复。复核确认 reset_cross_defaults() 在 on_combo 与 on_tile 两处均在 rebuild_controls() 之前调用，A 恒为 0、B 取与 A 日期不同的最后一个帧索引；同通信道分支未触及，42 项字节级回归全部一致。",
+    "reviewer_execution_ref": "webui-cross-channel-repair-20261027-r2"
+  }
+}

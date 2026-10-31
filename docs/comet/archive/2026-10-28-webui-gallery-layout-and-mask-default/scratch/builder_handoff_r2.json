@@ -1,0 +1,39 @@
+{
+  "kind": "builder-handoff",
+  "summary": "第 2 轮修复 Verifier 在 A3 中指出的阻塞性视觉回归：三栏布局改造后，左栏色条（ui.image, h-[14px]）作为高度受限 flex 列的子项被 flex-shrink 压成 0px，渐变条不可见（基线同视口为 14px），违反规格“显示色条”。修复为给色条加 shrink-0，使其在 1600x900 / 1600x500 / 1600x400 / 1024x768 下均恒为 342x14，截图确认渐变条可见。其余实现未变：gallery 图顺时针旋转 90° 并左右并排、热力图同向旋转、三栏独立滚动、common_mask 默认关闭、短视口热力图 shrink-0 防裁切、图像栏 min-w-[360px] 防塌缩。",
+  "addressed_acceptance_ids": ["A3"],
+  "checks": [
+    {
+      "name": "python -m py_compile app/change_detection_webui.py",
+      "result": "passed",
+      "note": "语法检查通过"
+    },
+    {
+      "name": "docs/comet/changes/webui-gallery-layout-and-mask-default/scratch/check_regression.py",
+      "result": "passed",
+      "note": "42 项同通道跨日数值/渲染/统计与归档基线对拍全部一致 + 3 项旋转一致性检查通过"
+    },
+    {
+      "name": "docs/comet/archive/2026-10-27-webui-cross-channel-change/scratch/verify_impl.py",
+      "result": "passed",
+      "note": "独立 numpy 复算全部通过（d、C0 2 倍、残差与对称化、单期 Landsat、掩膜按传感器、阈值语义、无真值表述）"
+    },
+    {
+      "name": "browser colorbar height at 1600x900 / 1600x500 / 1600x400 / 1024x768",
+      "result": "passed",
+      "note": "色条在四个视口下均为 342x14（修复前为 0px），截图确认渐变条可见；同时热力图恒为 520x520、整页 scrollHeight==clientHeight、左栏可滚动 56/456/556/203px"
+    }
+  ],
+  "known_limits": [
+    "旋转为显示层变换：最终显示的 PNG 与已归档版本不同，这是本 change 的预期变更；数值与旋转前 RGB 渲染与基线字节级一致（42 项对拍确认）。",
+    "窄视口（<=1024px）下三栏最小宽度合计约 1340px，需横向滚动才能看到图像栏，属三栏固定宽度的预期取舍。",
+    "1600x400 等极短视口下 520px 热力图无法一屏全见，需在中间栏内纵向滚动，属视口尺寸限制。",
+    "三栏使用 overflow-y:auto，内容不溢出时不显示滚动条（溢出时正常出现 10px 细条），与“常驻可见”的字面要求有差距，属观感取舍。",
+    "captions 固定两行高度；超长视图名在极窄列宽下末尾可能被裁剪，完整内容通过 title tooltip 与元信息栏获得。"
+  ],
+  "review": {
+    "status": "passed",
+    "summary": "Verifier 在 A3 指出唯一阻塞缺陷：左栏色条被 flex 压成 0px。该问题定位于左栏 scrolling column 的子项缺少 shrink-0，与热力图在短视口被压缩属同一类 flex 收缩问题。修复为色条加 shrink-0，四个视口实测均恢复 342x14 并截图确认。改动仅触及色条一个元素的 class，不影响任何数值、旋转或滚动逻辑；回归脚本 42 项与独立复算复跑仍全部通过。",
+    "reviewer_execution_ref": "rev-webui-gallery-colorbar-fix-20261028T134500+0800-b7e2"
+  }
+}

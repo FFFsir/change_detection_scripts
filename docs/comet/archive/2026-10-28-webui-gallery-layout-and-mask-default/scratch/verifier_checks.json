@@ -1,0 +1,32 @@
+{
+  "kind": "dispatch-verifier",
+  "checks": [
+    {
+      "id": "compile-webui",
+      "name": "compile webui",
+      "executable": ".venv/Scripts/python.exe",
+      "argv": ["-m", "py_compile", "app/change_detection_webui.py"],
+      "cwdRef": ".",
+      "timeoutMs": 120000,
+      "repeatable": true
+    },
+    {
+      "id": "same-channel-regression",
+      "name": "same-channel numerics identical to archived baseline",
+      "executable": ".venv/Scripts/python.exe",
+      "argv": ["docs/comet/changes/webui-gallery-layout-and-mask-default/scratch/check_regression.py"],
+      "cwdRef": ".",
+      "timeoutMs": 300000,
+      "repeatable": true
+    },
+    {
+      "id": "independent-recompute",
+      "name": "independent numpy recompute of d and residuals",
+      "executable": ".venv/Scripts/python.exe",
+      "argv": ["docs/comet/archive/2026-10-27-webui-cross-channel-change/scratch/verify_impl.py"],
+      "cwdRef": ".",
+      "timeoutMs": 300000,
+      "repeatable": true
+    }
+  ]
+}

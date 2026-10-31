@@ -1,0 +1,56 @@
+{
+  "kind": "verifier-response",
+  "response": {
+    "kind": "final-result",
+    "result": {
+      "iteration": 2,
+      "attempt": 1,
+      "verdict": "pass",
+      "acceptance": [
+        {
+          "id": "A1",
+          "result": "passed",
+          "reason": "COMBOS (app/change_detection_webui.py:380-384) 三项经真实浏览器切换 6 次：页面 marker 存活、navigation 条目恒为 1（无刷新）；控件显隐按类型切换（同通道 视图/帧对；同日 A/B/共享帧；跨日 A/B/A帧/B帧/残差方向/残差取值）；热力图 src 逐次变化；gallery 2→1（“同一观测，两通道”）→2；统计与语义提示同步更新；同日下 landsat A/B 切跨日会自动纠正为同传感器 sentinel2 视图。"
+        },
+        {
+          "id": "A2",
+          "result": "passed",
+          "reason": "pair_distance (230-254) 与独立 numpy 最大差 4.9e-8~1.3e-7；同日基线热力图（掩膜开/关）与独立 colourise((1-cos)/2) 逐像素 0 差异；C0_epoch_0/d ratio ∈[1.9999992,2.0000011]、C1_visible_before_ir_after/d ∈[1.9999988,2.0000011]（6 组）；源码无 C0_epoch/C1_/same_modality 读取，仅取 common_mask；UI 同日统计 0.2267/0.3328/0.4789 与复算 0.226735/0.332761/0.478853 一致。"
+        },
+        {
+          "id": "A3",
+          "result": "passed",
+          "reason": "compute (576-600) 的 base/fwd/rev/sym 与独立复算 max|Δ|≤1.4e-7（C01 s2/landsat、V01 0→2 与 1→2、C02、N01），sym 恒为 (fwd+rev)/2；1880 个跨日帧对子采样均有限且落在 [-1,1]；带符号/绝对值×三种显示模式共 8 张热力图逐像素 0 差异；|r| 阈值高亮计数全部吻合（0.02→1903、fwd 0.044778→2648、rev 0.044750→194、V01 0.10555→7106、上界→0）；输入 0 钳到 step、999 钳到 upper。"
+        },
+        {
+          "id": "A4",
+          "result": "passed",
+          "reason": "与 scratch/app_before.py 并排驱动 12 组同通道跨日场景（默认/三模式/阈值 0.1、999、0/掩膜开与关/视图切换/V01 瓦片/0→1、1→2 帧对）：热力图 FNV 哈希全同、灰像素 413/980 相同、unique 色数相同、阈值 min/max/step 相同、gallery URL/可见性/caption 相同，统计仅多出规格新增的“当前阈值”行；原 A1–A7 复验通过（默认两帧两图、上界 0 高亮、左端=step、V01 帧对 3 选项默认 0-2、掩膜 413↔16384 且灰块消失）。"
+        },
+        {
+          "id": "A5",
+          "result": "passed",
+          "reason": "8 个单期瓦片跨日下 A 仅 5 个 sentinel2 视图、B 仅 4 个，无 landsat_*，并显示“已排除单帧视图（跨日类型不可用）”；C05 残留 landsat A 切跨日自动重置；全库 265 个 view 的 gallery 缺图仅 V01/sentinel2/2024-09-01；手动 B=帧1 显示“索引无记录 + 命名模式 + 现有 V01_sentinel2_0/2.png”且 B 图隐藏，“有记录但文件不存在（含记录路径）”分支以内存替换路径实测成立。"
+        },
+        {
+          "id": "A6",
+          "result": "passed",
+          "reason": "mask (165-186) 按 view 前缀取传感器；53 个 tile-sensor 组 106 次跨 npz 比对掩膜全等；C01 sentinel2=15971 vs landsat=16384，切 A 到 landsat 后掩膜外=0；V01 缺 landsat 掩膜抛 FileNotFoundError 无全 True 回退；关闭开关后分母 16384、灰像素 0，渲染与“掩膜外按自身 d 着色”的独立复算逐像素 0 差异。"
+        },
+        {
+          "id": "A7",
+          "result": "passed",
+          "reason": "distribution_label (398-399) 对 full 标“分布内”、其余标“分布外（波段消融诊断）”，混合判断见 864-866；C01 全部 10 个视图在同通道与跨通道位置标注均正确，full|visible 显示“分布内 vs 分布外混合对照”；三类组合页面文本扫描均无 准确率/精度/置信度/accuracy/真值/ground truth（源码仅 323、1176 行英文注释含 precision，非界面）。"
+        }
+      ],
+      "risks": [
+        "非阻塞：threshold_scale 在 maximum==1.0 时上界截断为 1.0，字面不再“严格大于 m”，但 count(q>x)==0 不变量成立。",
+        "非阻塞：同日跨通道共享帧选项按 view_a 帧数生成、compute 按两通道最小帧数钳制；当前 53/53 组同传感器视图帧数一致，该分支不可达。",
+        "非阻塞：隐藏控件保留旧值（同通道的“视图”、同日/跨日的共享帧选择器），不影响计算与可见界面；重新进入跨日类型会按规格默认重置 A/B 帧，用户手工选的帧对不保留。",
+        "非阻塞：“索引有记录但文件不存在”缺图分支在当前数据中不可触发（全部索引记录文件均存在），仅通过内存替换验证；未改动 data/。",
+        "验证期间仅使用项目 .venv 与系统 Node playwright，未新增依赖；已结束验证启动的服务。"
+      ],
+      "summary": "第 2 轮 7 项验收全部通过，第 1 轮指出的默认帧偏差已修复且未引入回归：三条指定路径实测均为 A=帧0（2024-02-14）/B=帧2（2024-11-30），同通道跨日仍为 0→2，手动 B=帧1 仍正确显示“索引无记录”；独立 numpy 复算、12 张热力图逐像素比对、与 app_before.py 的 12 组字节级对拍共同确认 d=(1-cos)/2、C0/C1 严格 2 倍且未混用、跨日残差与 sym 公式逐像素成立、|残差| 阈值语义正确、掩膜按传感器选取、单期 Landsat 无不可算组合、全部非 full 视图有 OOD 标记且无真值/精度表述。"
+    }
+  }
+}

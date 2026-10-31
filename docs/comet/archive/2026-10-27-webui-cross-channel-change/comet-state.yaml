@@ -1,0 +1,311 @@
+schema: comet.native.v4
+name: webui-cross-channel-change
+language: zh-CN
+phase: archive
+status: done
+state_version: 12
+brief: brief.md
+shape_confirmation_hash: e22e3cb8907a903e225a7d1212a09dfa07f0170243351a16c1c90680b284759c
+spec_changes:
+  - capability: change-detection-webui
+    operation: modify
+    source: specs/change-detection-webui/spec.md
+workspace:
+  isolation: current
+  change_branch: null
+  target_branch: null
+  finish: null
+loop:
+  stage: done
+  goal_cycle: 1
+  iteration: 2
+  attempt: 1
+  retry_epoch: 0
+  failed_iteration_count: 0
+  no_progress_count: 0
+  execution_failure_count: 0
+  previous_unresolved_ids: []
+  next_action: null
+acceptance:
+  - id: A1
+    source: brief.md
+    text: A1：三种组合类型（同通道跨日 / 同日跨通道 / 跨日跨通道）均可选择；切换后控件、热力图、gallery 图像、统计同步更新且无需刷新页面。
+    result: passed
+    reason:
+      text: COMBOS (app/change_detection_webui.py:380-384) 三项经真实浏览器切换 6 次：页面 marker
+        存活、navigation 条目恒为 1（无刷新）；控件显隐按类型切换（同通道 视图/帧对；同日 A/B/共享帧；跨日
+        A/B/A帧/B帧/残差方向/残差取值）；热力图 src 逐次变化；gallery
+        2→1（“同一观测，两通道”）→2；统计与语义提示同步更新；同日下 landsat A/B 切跨日会自动纠正为同传感器 sentinel2
+        视图。
+      truncated: false
+  - id: A2
+    source: brief.md
+    text: A2：同日跨通道结果可由独立 numpy 复算逐像素复现（d=(1-cos)/2），且与数据集自带 C0 数值呈严格 2 倍关系。
+    result: passed
+    reason:
+      text: pair_distance (230-254) 与独立 numpy 最大差 4.9e-8~1.3e-7；同日基线热力图（掩膜开/关）与独立
+        colourise((1-cos)/2) 逐像素 0 差异；C0_epoch_0/d ratio
+        ∈[1.9999992,2.0000011]、C1_visible_before_ir_after/d
+        ∈[1.9999988,2.0000011]（6 组）；源码无 C0_epoch/C1_/same_modality 读取，仅取
+        common_mask；UI 同日统计 0.2267/0.3328/0.4789 与复算 0.226735/0.332761/0.478853
+        一致。
+      truncated: false
+  - id: A3
+    source: brief.md
+    text: A3：跨日跨通道的残差等于“跨日期距离 − 对应同日基线”逐像素成立；双向结果与规格中的对称化公式一致。
+    result: passed
+    reason:
+      text: compute (576-600) 的 base/fwd/rev/sym 与独立复算 max|Δ|≤1.4e-7（C01
+        s2/landsat、V01 0→2 与 1→2、C02、N01），sym 恒为 (fwd+rev)/2；1880 个跨日帧对子采样均有限且落在
+        [-1,1]；带符号/绝对值×三种显示模式共 8 张热力图逐像素 0 差异；|r| 阈值高亮计数全部吻合（0.02→1903、fwd
+        0.044778→2648、rev 0.044750→194、V01 0.10555→7106、上界→0）；输入 0 钳到 step、999
+        钳到 upper。
+      truncated: false
+  - id: A4
+    source: brief.md
+    text: A4：现有同通道跨日类型行为不变，原验收 A1–A7（见
+      `docs/comet/archive/2026-10-20-aef-unsupervised-change-webui`，文字已录入本 brief
+      约束节）仍全部通过。
+    result: passed
+    reason:
+      text: 与 scratch/app_before.py 并排驱动 12 组同通道跨日场景（默认/三模式/阈值
+        0.1、999、0/掩膜开与关/视图切换/V01 瓦片/0→1、1→2 帧对）：热力图 FNV 哈希全同、灰像素 413/980
+        相同、unique 色数相同、阈值 min/max/step 相同、gallery URL/可见性/caption
+        相同，统计仅多出规格新增的“当前阈值”行；原 A1–A7 复验通过（默认两帧两图、上界 0 高亮、左端=step、V01 帧对 3 选项默认
+        0-2、掩膜 413↔16384 且灰块消失）。
+      truncated: false
+  - id: A5
+    source: brief.md
+    text: A5：8 个单期 Landsat 瓦片（C05/C06/C10/C12/C17/C18/C19/C21）在跨日类型下不出现不可算组合；V01
+      中间帧（2024-09-01）缺图提示正确区分“索引无记录”。
+    result: passed
+    reason:
+      text: 8 个单期瓦片跨日下 A 仅 5 个 sentinel2 视图、B 仅 4 个，无
+        landsat_*，并显示“已排除单帧视图（跨日类型不可用）”；C05 残留 landsat A 切跨日自动重置；全库 265 个 view 的
+        gallery 缺图仅 V01/sentinel2/2024-09-01；手动 B=帧1 显示“索引无记录 + 命名模式 + 现有
+        V01_sentinel2_0/2.png”且 B 图隐藏，“有记录但文件不存在（含记录路径）”分支以内存替换路径实测成立。
+      truncated: false
+  - id: A6
+    source: brief.md
+    text: A6：common_mask 仍按传感器选取，跨通道时不取错掩膜；关闭开关后全部 16384 像素参与着色与统计。
+    result: passed
+    reason:
+      text: mask (165-186) 按 view 前缀取传感器；53 个 tile-sensor 组 106 次跨 npz 比对掩膜全等；C01
+        sentinel2=15971 vs landsat=16384，切 A 到 landsat 后掩膜外=0；V01 缺 landsat 掩膜抛
+        FileNotFoundError 无全 True 回退；关闭开关后分母 16384、灰像素 0，渲染与“掩膜外按自身 d
+        着色”的独立复算逐像素 0 差异。
+      truncated: false
+  - id: A7
+    source: brief.md
+    text: A7：所有分布外视图（非 full 的单通道/组合通道视图）在界面上有明确 OOD 标记，且页面不出现任何真值或精度表述。
+    result: passed
+    reason:
+      text: distribution_label (398-399) 对 full 标“分布内”、其余标“分布外（波段消融诊断）”，混合判断见
+        864-866；C01 全部 10 个视图在同通道与跨通道位置标注均正确，full|visible 显示“分布内 vs
+        分布外混合对照”；三类组合页面文本扫描均无 准确率/精度/置信度/accuracy/真值/ground truth（源码仅 323、1176
+        行英文注释含 precision，非界面）。
+      truncated: false
+builder_handoff:
+  candidate_id: 87726ef2-deb5-4578-8c84-ebbd4200270c
+  identity_provider: skill-coordinated
+  builder_execution_ref: skill-coordinated:builder:c19019df-ee47-42e3-98ef-d7ec42e3609e
+  iteration: 2
+  summary:
+    text: 第 2 轮仅修复第 1 轮 Verifier 指出的非阻塞规格偏差：抽出
+      reset_cross_defaults()，在“切换到跨日跨通道”与“跨日类型下切换瓦片”两条入口统一把 A 设为首帧、B 设为与 A
+      日期不同的末帧。此前仅 on_tile 且 combo=='cross_day' 时会重置，导致“先选瓦片再切跨日”路径沿用初始化索引；实测 V01
+      该路径下 B 落在帧 1（2024-09-01，无 gallery 图），与规格 D6 要求的末帧 n-1=2 不符。修复后三条路径实测均正确：先选
+      V01 再切跨日 → A=0/B=2（无缺图）；跨日下 C01→V01 → A=0/B=2；同通道跨日 → 仍为 0→2。其余实现与第 1
+      轮已验收候选完全一致。
+    truncated: false
+  addressed_acceptance_ids:
+    - A1
+    - A3
+    - A4
+    - A5
+  checks:
+    - name:
+        text: python -m py_compile app/change_detection_webui.py
+        truncated: false
+      result: passed
+      note:
+        text: 语法检查通过
+        truncated: false
+    - name:
+        text: docs/comet/changes/webui-cross-channel-change/scratch/verify_facts.py
+        truncated: false
+      result: passed
+      note:
+        text: 数据事实全部通过（与第 1 轮一致，未改动数据读取逻辑）
+        truncated: false
+    - name:
+        text: docs/comet/changes/webui-cross-channel-change/scratch/verify_impl.py
+        truncated: false
+      result: passed
+      note:
+        text: 独立 numpy 复算全部通过（d、C0 2 倍关系、残差与对称化、单期 Landsat 过滤、掩膜选取、阈值语义、带符号渲染、无真值表述）
+        truncated: false
+    - name:
+        text: same-channel regression vs scratch/app_before.py
+        truncated: false
+      result: passed
+      note:
+        text: 6 组瓦片/视图/帧对 × 掩膜开关 × 三种显示模式 + 统计，共 42
+          项对比全部字节级一致（pair_distance、render_rgb、summarise 均未改动）
+        truncated: false
+    - name:
+        text: browser test of three entry paths
+        truncated: false
+      result: passed
+      note:
+        text: 先选瓦片(V01)再切跨日 → 帧数 A 3 / B 3，A 帧 0 · 2024-02-14 → B 帧 2 · 2024-11-30，缺图提示
+          0 处；跨日下切瓦片 C01→V01 → A 帧 0 · 2024-02-29 → B 帧 1 · 2024-11-30 后变为 A 3 /
+          B 3 的 0→2；回到同通道跨日 → 比较帧 0 → 2，日期 2024-02-14 → 2024-11-30
+        truncated: false
+  checks_truncated: false
+  known_limits:
+    - text: 数据集不含变化参考标注，跨日跨通道结果仅为探索性对照，界面不提供精度或置信度结论。
+      truncated: false
+    - text: 跨通道限定同一传感器；跨传感器比较不在本 change 范围内。
+      truncated: false
+    - text: gallery 缺少 V01/sentinel2/2024-09-01 的整幅图；手动把 B
+        帧选到该日期时仍会显示“索引无记录”提示（符合规格），但默认路径不再落在该帧。
+      truncated: false
+    - text: 同日跨通道共享帧选项按 view_a 帧数生成、计算按两通道最小帧数钳制；当前 53/53 组同传感器视图帧数一致，该分支不可达。
+      truncated: false
+    - text: threshold_scale 在 maximum==1.0 时上界截断为 1.0，字面上不再严格大于 m，但 count(q>x)==0
+        不变量仍成立。
+      truncated: false
+  known_limits_truncated: false
+  review:
+    status: passed
+    summary:
+      text: 本轮改动为单一函数的提取与两处调用点统一，属第 1 轮独立 Verifier 已指出偏差的定向修复。复核确认
+        reset_cross_defaults() 在 on_combo 与 on_tile 两处均在 rebuild_controls()
+        之前调用，A 恒为 0、B 取与 A 日期不同的最后一个帧索引；同通信道分支未触及，42 项字节级回归全部一致。
+      truncated: false
+    reviewer_execution_ref: webui-cross-channel-repair-20261027-r2
+  submitted_at: 2026-10-27T16:49:22.377Z
+blockers: []
+verification:
+  candidate_id: 87726ef2-deb5-4578-8c84-ebbd4200270c
+  identity_provider: skill-coordinated
+  verifier_execution_ref: skill-coordinated:verifier:eede15ae-4545-4380-97a4-e117d84ab986
+  iteration: 2
+  attempt: 1
+  assurance: skill-coordinated
+  verdict: pass
+  checks:
+    - id: compile-webui
+      name:
+        text: compile webui
+        truncated: false
+      argv_display:
+        - text: -m
+          truncated: false
+        - text: py_compile
+          truncated: false
+        - text: app/change_detection_webui.py
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 84
+    - id: data-facts
+      name:
+        text: verify embedding/mask/gallery facts
+        truncated: false
+      argv_display:
+        - text: docs/comet/changes/webui-cross-channel-change/scratch/verify_facts.py
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 382
+    - id: independent-recompute
+      name:
+        text: independent numpy recompute of d and residuals
+        truncated: false
+      argv_display:
+        - text: docs/comet/changes/webui-cross-channel-change/scratch/verify_impl.py
+          truncated: false
+      argv_truncated: false
+      cwd_ref: .
+      status: passed
+      exit_code: 0
+      duration_ms: 1028
+  summary:
+    text: 第 2 轮 7 项验收全部通过，第 1 轮指出的默认帧偏差已修复且未引入回归：三条指定路径实测均为
+      A=帧0（2024-02-14）/B=帧2（2024-11-30），同通道跨日仍为 0→2，手动 B=帧1 仍正确显示“索引无记录”；独立
+      numpy 复算、12 张热力图逐像素比对、与 app_before.py 的 12 组字节级对拍共同确认 d=(1-cos)/2、C0/C1 严格
+      2 倍且未混用、跨日残差与 sym 公式逐像素成立、|残差| 阈值语义正确、掩膜按传感器选取、单期 Landsat 无不可算组合、全部非 full
+      视图有 OOD 标记且无真值/精度表述。
+    truncated: false
+  risks:
+    - text: 非阻塞：threshold_scale 在 maximum==1.0 时上界截断为 1.0，字面不再“严格大于 m”，但 count(q>x)==0
+        不变量成立。
+      truncated: false
+    - text: 非阻塞：同日跨通道共享帧选项按 view_a 帧数生成、compute 按两通道最小帧数钳制；当前 53/53
+        组同传感器视图帧数一致，该分支不可达。
+      truncated: false
+    - text: 非阻塞：隐藏控件保留旧值（同通道的“视图”、同日/跨日的共享帧选择器），不影响计算与可见界面；重新进入跨日类型会按规格默认重置 A/B
+        帧，用户手工选的帧对不保留。
+      truncated: false
+    - text: 非阻塞：“索引有记录但文件不存在”缺图分支在当前数据中不可触发（全部索引记录文件均存在），仅通过内存替换验证；未改动 data/。
+      truncated: false
+    - text: 验证期间仅使用项目 .venv 与系统 Node playwright，未新增依赖；已结束验证启动的服务。
+      truncated: false
+  risks_truncated: false
+  completed_at: 2026-10-27T17:07:39.423Z
+history:
+  - goal_cycle: 1
+    iteration: 1
+    attempt: 1
+    outcome: pass
+    unresolved_ids: []
+    summary:
+      text: 7 项验收全部通过。独立 numpy 复算、渲染 PNG 逐像素比对、UI 交互驱动与 baseline 对拍共同确认：d=(1-cos)/2
+        与数据集 1-cos 严格 2 倍且不混用；跨日残差与 sym=(fwd+rev)/2 逐像素成立；带符号/绝对值视图及 |r|
+        阈值语义正确；掩膜严格按传感器选取且关闭后 16384 像素全参与；单期 Landsat 无不可算组合，V01 缺图两分支区分正确；所有非
+        full 视图均有 OOD 标记且无真值/精度表述；同通道跨日与改动前逐字节一致。仅余一处非阻塞默认帧偏差。
+      truncated: false
+    completed_at: 2026-10-27T16:43:04.965Z
+  - goal_cycle: 1
+    iteration: 1
+    attempt: 1
+    outcome: recovery
+    unresolved_ids: []
+    summary:
+      text: 修复 Verifier 指出的非阻塞规格偏差：从其他组合类型切换到跨日跨通道、或切换瓦片时，B 帧未按规格重置为“与 A 日期不同的末帧”（实测
+        V01 该路径默认落在无 gallery 图的 2024-09-01）。其余实现与已验收候选一致。
+      truncated: false
+    completed_at: 2026-10-27T16:48:25.861Z
+  - goal_cycle: 1
+    iteration: 2
+    attempt: 1
+    outcome: pass
+    unresolved_ids: []
+    summary:
+      text: 第 2 轮 7 项验收全部通过，第 1 轮指出的默认帧偏差已修复且未引入回归：三条指定路径实测均为
+        A=帧0（2024-02-14）/B=帧2（2024-11-30），同通道跨日仍为 0→2，手动 B=帧1 仍正确显示“索引无记录”；独立
+        numpy 复算、12 张热力图逐像素比对、与 app_before.py 的 12 组字节级对拍共同确认 d=(1-cos)/2、C0/C1
+        严格 2 倍且未混用、跨日残差与 sym 公式逐像素成立、|残差| 阈值语义正确、掩膜按传感器选取、单期 Landsat 无不可算组合、全部非
+        full 视图有 OOD 标记且无真值/精度表述。
+      truncated: false
+    completed_at: 2026-10-27T17:07:39.423Z
+history_overflow:
+  dropped_entries: 0
+  first_dropped_at: null
+  last_dropped_at: null
+  outcome_counts:
+    pass: 0
+    fail: 0
+    blocked: 0
+    execution-error: 0
+    recovery: 0
+verification_result: pass
+verification_report: verification.md
+archived: true
+created_at: 2026-10-27T15:05:25.832Z

@@ -1,0 +1,30 @@
+# Python-generated files
+__pycache__/
+*.py[cod]
+*.pyo
+build/
+dist/
+*.egg-info/
+
+# Virtual environment
+/.venv/
+
+# NiceGUI runtime files
+.nicegui/
+
+# Data packages: multi-GB, never commit. Point the app at a local package with
+# --data-root or the in-page path control instead.
+/data/
+
+# Comet runtime state (machine-local); only the project config is tracked
+# >>> Comet managed project state >>>
+!/.comet/
+/.comet/*
+!/.comet/config.yaml
+# <<< Comet managed project state <<<
+
+# Agent harness config and skill bundles (machine/authoring-local, ~18 MB of
+# duplicated copies). Project instructions live in AGENTS.md / AGENTS.local.md.
+/.dsh/
+/.pi/
+/.zcode/
