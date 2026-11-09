@@ -2,8 +2,8 @@ schema: comet.native.v4
 name: webui-multipage-dw-labels
 language: zh-CN
 phase: archive
-status: active
-state_version: 18
+status: done
+state_version: 21
 brief: brief.md
 shape_confirmation_hash: 2f809d91a92a2fda244644949faec9234d099cfa3b96f8864020fcfa80c54d29
 spec_changes:
@@ -16,7 +16,7 @@ workspace:
   target_branch: main
   finish: pull-request
 loop:
-  stage: archive-ready
+  stage: done
   goal_cycle: 3
   iteration: 1
   attempt: 1
@@ -25,7 +25,7 @@ loop:
   no_progress_count: 0
   execution_failure_count: 0
   previous_unresolved_ids: []
-  next_action: archive
+  next_action: null
 acceptance:
   - id: A1
     source: brief.md
@@ -405,5 +405,5 @@ history_overflow:
     recovery: 0
 verification_result: pass
 verification_report: verification.md
-archived: false
+archived: true
 created_at: 2026-11-08T09:59:39.061Z
