@@ -1,0 +1,67 @@
+---
+generated_from_state_version: 18
+---
+
+# 验证
+
+## 当前结果
+
+- 结果: **验收通过，可归档**
+- 验证情况: **已完成检查，验证结果已确认**
+- 目标周期: 3
+- 迭代: 1
+- 验证器尝试次数: 1
+- 完成时间: 2026-11-09T04:43:48.528Z
+- 摘要: 11/11 通过：三页路由与导航、AEF 页既有行为与公式口径、DW 标签与官方配色、candidate_mask/bbox 叠加、manifest 与 pmax 口径、整瓦片统计可独立复算、数据根切换与掩膜/图像回退、无波段组标注与无跨传感器入口、DW 页四项显示自定义（档数夹取回写、二值模式无边界线、18 种组合下统计恒定）、文档同步。两处文档缺陷已在验收后修正并复检。
+
+## 验收
+
+| 编号 | 结果 | 来源 | 验收项 | 原因 |
+| --- | --- | --- | --- | --- |
+| A1 | passed | brief.md | A1：启动应用后 `/` 与 `/aef` 都呈现「AEF 无监督变化检测」页，`/dw` 呈现 DW 标签对比页；每页顶部常驻平台标题与两个页面入口，当前页入口有可见的选中样式；点击入口完成整页切换，切换后无需重启进程，三页均无服务端异常。 | GET /、/aef、/dw 均 200（410844/410844/450031 B），服务端日志无 traceback；三页页头均含平台标题与两个入口，当前页链接为 page-nav page-nav-active；点击入口在同一进程内切换。 |
+| A2 | passed | brief.md | A2：AEF 页保留三种组合类型及其控件/语义提示、数据根切换与失败回滚（非法路径提示且不破坏当前数据与用户阈值）、固定/动态分档色阶（档数 2–64、边界线开关、二值掩膜不画边界）、自适应阈值 `(0, x]` 滑块与数值框、三种显示模式、common_mask 开关（默认关闭，分母 16384）、瓦片中心坐标与“无坐标信息”提示、三栏各自独立滚动且整页不滚动、gallery 两帧并排且与热力图同向顺时针 90°、缺图提示保留多行；同日跨通道与 C0 的严格 2 倍关系、跨日跨通道 `fwd`/`rev`/`sym` 公式、单期 Landsat 过滤、掩膜按传感器选取均与迁移前一致。 | 与 e987e7d 做 AST 对比：43 个嵌套函数中仅 band_range/on_levels（改为委托共享 helper，已逐项验证等价）、compute（委托 residual_maps，算术相同）、refresh（新增掩膜来源与波段文案）、tile_label（委托）有差异；布局差异仅 h-screen → calc(100vh-3.5rem)。实测：三种组合与控件可见性正确；掩膜 16384→15971；阈值 0→step、999→upper；档数 100→64、1→2、清空保持；二值模式不受边界开关影响；V01 无坐标、缺图 4 行含“索引无记录”；同日类型隐藏第二列；热力图等于顺时针 rot90；非法数据根与预检后失败均回滚且保留阈值 0.171666。归档 check_regression 42 项 + 3 项旋转通过；C0 比值 1.999999–2.000001。 |
+| A3 | passed | brief.md | A3：DW 页从 `land_cover/dynamic_world.npz` 读取 `label`（2×128×128，0–8 为类别、255 为无效）、`probabilities`、`valid_mask`、`pmax`，从数据包根 `dynamic_world_legend.json` 读取 9 个类别的代码、名称与官方色值；前后两期标签图逐像素按官方配色渲染，255/无效像素用固定中性色并注明，页面图例列出全部 9 类与无效值。 | label/probabilities/valid_mask/pmax 均加载并校验形状；图例 9 类 + nodata 255；独立复算重绘两期标签图逐像素差 0（D01、D05）；255/无效像素使用中性灰（D05 前期 6430 个无效 → 64480 个放大后灰像素）；图例列出 0–8 与 255。 |
+| A4 | passed | brief.md | A4：DW 页两期标签图上叠加 `masks/label_transition.npz` 的 `candidate_mask` 轮廓与 `bbox_yxyx` 矩形（`[y0,x0,y1,x1]`，末端不含），并在界面显示 `before_label`/`after_label` 的代码与类别名；显示的 `core_pixels` 等于 `candidate_mask.sum()`，且与 `tile_manifest.json` 的 `core_pixels`、`before_label`、`after_label` 一致。 | 独立复算两张标签图含青色 candidate_mask 轮廓与品红 bbox 矩形，逐像素差 0；页面显示 7 bare → 6 built；6 个瓦片 candidate_mask.sum() 均等于 manifest core_pixels（D01 为 333），前后标签与 manifest 一致。 |
+| A5 | passed | brief.md | A5：DW 页显示 `tile_manifest.json` 的 `tile_id`、`region_id`、`split`、`before_class → after_class`、`core_pixels` 与两期 `before_mean_confidence`/`after_mean_confidence`；置信度一律标注为“平均 pmax（模型概率）”，页面同时声明 DW 标签是模型分类、不是人工核实真值；全页不出现准确率、精度、召回率或真值一致性之类结论。 | 显示 tile_id/region_id/split、before_class → after_class、core_pixels 与 manifest 值、bbox，以及“平均 pmax（manifest 记录值）”和“pmax 均值（整瓦片）”两组，附“以上均为模型概率（pmax），不是准确率或精度指标”与常驻“DW 标签是模型分类结果，不是人工核实的地面真值”；无准确率/精度/召回率/真值一致性结论。 |
+| A6 | passed | brief.md | A6：DW 页对当前瓦片与所选传感器，用 `d=(1-cos)/2` 计算两期嵌入距离，并在整瓦片全部有效像素上给出像素数、均值、中位数、p90、p95、最大值与超阈值比例；阈值量程按该像素集合计算；切换瓦片、传感器或阈值后热力图与统计立即更新，且可由独立 numpy 复算逐项复现；页面不做「核心区 / 核心区外」的分组统计。 | 6 瓦片 × 2 传感器在 7 个阈值下独立复算 count/mean/median/p90/p95/max/hot/ratio 及量程 upper/step/max/default 全部吻合；有效集合 = 可用 ∧ DW valid_mask（两期）∧ label≠255；region_stats(d, valid, threshold) 无 candidate_mask/bbox 过滤，且报告值等于整瓦片集合、与核心区子集不同。 |
+| A7 | passed | brief.md | A7：DW 页的数据根输入框可在同一页把数据根切到 DW 数据包并完成整体刷新（瓦片、标签图、热力图、统计、预览图全部更新），非法路径显示可读错误且不破坏当前已加载数据；切入不含 DW 标签的旧包时显示“该数据包不含 DW 标签”类提示而不是伪造标签；包内无 `distance_maps` 时掩膜回退为 `valid_mask[0] & valid_mask[1]`，该掩膜也不存在时回退为全 True，界面注明当前掩膜来源与有效像素数；包内无 `gallery/index.json` 时图像区显示该瓦片的 `preview.png` 与 `review.png`，文件缺失时给出可读提示。 | 数据根切换刷新瓦片/标签/热力图/统计/预览；非法路径显示可读错误且不动数据与阈值；切到旧包显示“该数据包不含 DW 标签（未找到 tiles/*/land_cover/dynamic_world.npz）”并保留原数据；合成无 valid_mask 包回退“全 True（数据包未提供任何掩膜）”；缺 review.png 提示“缺少图像文件：…review.png”；无 gallery 索引时用 preview.png/review.png。 |
+| A8 | passed | brief.md | A8：同一读取层在 DW 包上把视图名 `sentinel2`/`sentinel1` 当作无波段组的单视图处理：AEF 页不把它标成“分布内/分布外”，而显示“单视图（无波段组）”；瓦片标签回退使用 `tile_id`/`region_id`/`split`，坐标从 `region_id` 解析；DW 页不提供任何 S2↔S1 跨传感器对比入口或结果。 | DW 包上 AEF 页标注“单视图（无波段组）”，跨通道类型显示“当前组合类型没有可用的通道组合”且不出现分布标签；瓦片标签回退 tile_id/region_id/split；坐标由 region_id 解析为 121.4172°E / 25.0446°N；DW 页仅一个传感器/视图选择器，无 S2↔S1 入口，并注明不做跨传感器比较。 |
+| A9 | passed | brief.md | A9：`d=(1-cos)/2`、残差与对称化公式、阈值量程规则与统计口径的自动化复算结果与迁移前逐像素一致；运行前后 `data/` 与 DW 数据包的路径、大小聚合哈希不变（只读）；全部模块可用 `.venv/Scripts/python.exe -m py_compile` 编译通过。 | pair_distance、threshold_scale、summarise、render_*、ramp_samples、band_index 与 e987e7d 逐字节相同；归档 check_regression 通过；两页独立复算吻合；两个数据包路径+大小聚合哈希前后一致（旧包 1448 文件 / 2,309,297,395 B，DW 194 文件 / 144,093,780 B），今日无新 mtime，app/ 内无写调用；56/56 unittest 与 py_compile 通过。 |
+| A10 | passed | brief.md | A10：`docs/webui-user-guide.md` 覆盖平台导航与 DW 页：标签配色、`candidate_mask` 与 bbox、pmax 口径、整瓦片统计、数据根切换、掩膜与图像回退、原生朝向说明；`README.md` 的文档导航与功能表同步更新，文档描述与当前实现一致。 | 说明书 §1.3/1.4、§2.4.4、§15.1–15.8、§16–17 覆盖导航、DW 数据根、瓦片与传感器、官方配色、candidate_mask/bbox、pmax 措辞、整瓦片统计、掩膜/图像回退与原生朝向；§15.6–15.7 与实现一致（默认 dynamic/12/on/overlay、2–64 夹取回写、清空或非数字保持、二值不画边界线、只影响显示）；README 导航与功能表已更新。 |
+| A11 | passed | brief.md | A11：DW 页提供与 AEF 页一致的图像显示自定义控件：色阶模式可切换「固定分段」与「动态分段」，档数可用整数输入框调整（默认 12，范围 2–64，越界输入被夹取并回写），档间边界线开关可开可关（默认开启），显示模式可选半透明红色叠加/二值掩膜/灰底彩色高亮（默认叠加）；色阶只影响显示，不改变距离数值、阈值、超阈值统计与量程；二值掩膜模式不绘制档间边界线；切换任一控件后热力图与色条立即更新且无需刷新页面。 | /dw 具备四项控件，默认 dynamic/12/on/overlay；档数 100→64、1→2、0/−3→2、65→64、12.7→12、清空保持 12，且字段均被回写；热力图哈希随每项控件改变；色条在档数/边界线/二值切换时改变，图注随色阶模式改变（0.000 → 1.000 vs 0.000 → 0.376）；二值模式热力图仅含背景/高亮/中性灰/青/品红，色条在有、无边界线时完全相同且图注为“档间边界线 = 关”；18 种组合（色阶模式 × 边界线 × 显示模式 × 档数 2/7/12/64）下统计文本、量程文本、阈值、阈值标签、pmax、元信息、core_pixels、标签图与预览图的指纹逐字节相同。 |
+
+## 检查
+
+| 检查 | 命令 | 工作目录 | 状态 | 退出码 | 耗时 |
+| --- | --- | --- | --- | ---: | ---: |
+| python unittest suite | -m unittest discover -s tests -v | . | passed | 0 | 1035 ms |
+| py_compile entry and modules | -I -m py_compile app/change_detection_webui.py app/webui/dataset.py app/webui/render.py app/webui/layout.py app/webui/aef_page.py app/webui/dw_data.py app/webui/dw_page.py tests/test_platform.py tests/check_routes.py | . | passed | 0 | 105 ms |
+| route smoke check | tests/check_routes.py | . | passed | 0 | 1689 ms |
+
+## 阻塞项
+
+_无。_
+
+## 风险与跳过的工作
+
+- 披露：本报告正文由只读 Verifier 对候选 2763eeae 的检查形成；随后我依据其指出的两处纯文档缺陷做了编辑（README 验证章节不再列出已失效的单文件版归档脚本；说明书 §2.4 子节编号去重为 2.4.5/2.4.6，并在 §2.4 开头说明所列结构针对旧包）。这两处编辑不涉及任何 .py、测试或数据文件，编辑后已重跑 56 项 unittest、三页路由检查与 py_compile，全部通过。
+- 三个路由的浏览器标签标题统一为“AEF 变化检测平台”，规格 §平台结构 写的是分页标题；A1 验收文字未涉及标签标题，不影响判定。
+- DW 页固定分段与动态分段的色条图像在像素上相同（离散调色板无坐标轴），仅图注端点不同；色条所在区块整体会更新。
+- 归档目录 2026-10-27 scratch/verify_impl.py 按非目标保持原样；README 已说明其不适用于模块化布局。
+- AEF 页二值模式仍会在色条上画边界线（保持 e987e7d 既有行为以通过 A2）；仅 DW 页按 A11 抑制。
+
+## 之前的迭代
+
+| 目标周期 | 迭代 | 尝试 | 结果 | 未解决项 | 摘要 | 完成时间 |
+| ---: | ---: | ---: | --- | --- | --- | --- |
+| 1 | 0 | 0 | recovery | — | Native confirmed acceptance criteria changed | 2026-11-08T10:13:30.788Z |
+| 2 | 1 | 1 | execution-error | — | Native Verifier response was invalid: Native verification cannot pass before every required check succeeds | 2026-11-08T11:16:27.117Z |
+| 2 | 1 | 2 | pass | — | 10/10 通过：三页路由与导航、AEF 页既有行为、DW 标签与官方配色、candidate_mask/bbox 叠加、manifest 与 pmax 口径、整瓦片统计可独立复算、数据根切换与掩膜/图像回退、无波段组标注与无跨传感器入口、公式与口径未变、文档同步。四项非阻塞风险已记录。 | 2026-11-08T11:17:13.220Z |
+| 2 | 1 | 2 | recovery | — | 用户新增需求：DW 页补齐与 AEF 页一致的显示自定义能力（档间边界线开关、档数调节等），需回到 Shape 更新验收标准 | 2026-11-09T04:02:42.296Z |
+| 3 | 1 | 1 | pass | — | 11/11 通过：三页路由与导航、AEF 页既有行为与公式口径、DW 标签与官方配色、candidate_mask/bbox 叠加、manifest 与 pmax 口径、整瓦片统计可独立复算、数据根切换与掩膜/图像回退、无波段组标注与无跨传感器入口、DW 页四项显示自定义（档数夹取回写、二值模式无边界线、18 种组合下统计恒定）、文档同步。两处文档缺陷已在验收后修正并复检。 | 2026-11-09T04:43:48.528Z |
+
+
+
+## 结论
+
+11/11 通过：三页路由与导航、AEF 页既有行为与公式口径、DW 标签与官方配色、candidate_mask/bbox 叠加、manifest 与 pmax 口径、整瓦片统计可独立复算、数据根切换与掩膜/图像回退、无波段组标注与无跨传感器入口、DW 页四项显示自定义（档数夹取回写、二值模式无边界线、18 种组合下统计恒定）、文档同步。两处文档缺陷已在验收后修正并复检。
